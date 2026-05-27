@@ -1,0 +1,29 @@
+# Keil MDK user/session state
+MDK-ARM/*.uvguix.*
+MDK-ARM/*.uvoptx
+
+# Keil generated build output
+MDK-ARM/DAQ_card/
+MDK-ARM/*.lst
+
+# Generic embedded build artifacts
+*.o
+*.d
+*.crf
+*.axf
+*.elf
+*.map
+*.hex
+*.bin
+*.lst
+*.lnp
+*.dep
+*.build_log.htm
+
+# Editor and operating-system files
+.vscode/
+.idea/
+*.tmp
+*.bak
+Thumbs.db
+Desktop.ini
