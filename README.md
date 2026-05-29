@@ -26,8 +26,10 @@ The generated FreeRTOS default task calls `APP_Init()` once and
 startup and polling to `PLATFORM_Init()` and `PLATFORM_Process()`.
 
 The DAQ service initializes the IMU660RC gyroscope through a BSP software-SPI
-adapter and prints angular velocity on USART1 every 100 ms. Default wiring is
-configured in `BSP/Inc/bsp_imu660rc.h`:
+adapter and prints angular velocity on USART1 every 100 ms by default. The
+service also exposes a runtime configuration structure, diagnostic counters,
+and a binary stream protocol encoder for later host-tool integration. Default
+wiring is configured in `BSP/Inc/bsp_imu660rc.h`:
 
 | IMU660RC signal | STM32 default pin |
 | --- | --- |
@@ -45,3 +47,10 @@ configured in `BSP/Inc/bsp_imu660rc.h`:
 - Add new sources to the Keil groups that match these directories.
 
 See `Docs/architecture.md` for the intended growth path.
+
+For a zero-baseline learning roadmap from basic concepts to industrial
+validation, see `Docs/industrial_gyroscope_learning_path.md`.
+
+For the next CubeMX peripheral work package, see
+`Docs/cubemx_configuration_task_book.md`. For the latest implementation
+summary, see `Docs/work_summary.md`.

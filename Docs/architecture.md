@@ -44,6 +44,20 @@ regeneration has a small, visible integration surface.
 | UART/USB transport | `BSP/` | `bsp_console` or a new transport adapter |
 | Device mode and commands | `Application/` | `app` or command task |
 
+## Stream Protocol Skeleton
+
+`Services/stream_protocol` provides a small binary frame encoder that can be
+used once the firmware moves from debug text output to host-facing telemetry.
+The current frame format is:
+
+```text
+SOF0 SOF1 VERSION TYPE SEQ_L SEQ_H TICK0..TICK3 LEN_L LEN_H PAYLOAD CRC_L CRC_H
+```
+
+Gyroscope payloads currently carry raw X/Y/Z `int16_t` values followed by
+X/Y/Z mdps `int32_t` values. Text output remains the default so the current
+USART debugging workflow is unchanged.
+
 ## CubeMX Regeneration Boundary
 
 Changes to generated files must remain inside `USER CODE` blocks. The current
