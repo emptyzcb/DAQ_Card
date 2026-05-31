@@ -1,4 +1,5 @@
 #include "bsp_imu660rc.h"
+#include "bsp_sensor.h"
 
 #define IMU660RC_FUNC_CFG_ACCESS 0x01U
 #define IMU660RC_CHIP_ID         0x0FU
@@ -199,3 +200,40 @@ void BSP_IMU660RC_GyroRead(BSP_IMU660RC_GyroData *data)
   data->y_dps = (float)data->y_raw / gyro_factor;
   data->z_dps = (float)data->z_raw / gyro_factor;
 }
+
+static int imu_sensor_init(uint32_t range)
+{
+  return BSP_IMU660RC_GyroInit((BSP_IMU660RC_GyroRange)range);
+}
+
+static void imu_sensor_read(BSP_SensorData *data)
+{
+  BSP_IMU660RC_GyroData gyro;
+
+  if (data == NULL)
+  {
+    return;
+  }
+
+  BSP_IMU660RC_GyroRead(&gyro);
+  data->x_raw  = gyro.x_raw;
+  data->y_raw  = gyro.y_raw;
+  data->z_raw  = gyro.z_raw;
+  data->x_conv = gyro.x_dps;
+  data->y_conv = gyro.y_dps;
+  data->z_conv = gyro.z_dps;
+}
+
+static int imu_sensor_validate_range(uint32_t range)
+{
+  return (range <= BSP_IMU660RC_GYRO_RANGE_4000DPS);
+}
+
+const BSP_SensorDriver BSP_IMU660RC_Driver = {
+  .name           = "IMU660RC",
+  .Init           = imu_sensor_init,
+  .Read           = imu_sensor_read,
+  .ReadChipId     = BSP_IMU660RC_ReadChipId,
+  .ValidateRange  = imu_sensor_validate_range,
+  .default_range  = (uint32_t)BSP_IMU660RC_GYRO_RANGE_2000DPS
+};

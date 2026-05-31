@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "bsp_imu660rc.h"
+#include "bsp_sensor.h"
 
 typedef enum
 {
@@ -31,7 +31,7 @@ typedef enum
 typedef struct
 {
   uint32_t sample_period_ms;
-  BSP_IMU660RC_GyroRange gyro_range;
+  uint32_t sensor_range;
   DAQ_SERVICE_OutputMode output_mode;
 } DAQ_SERVICE_Config;
 
@@ -48,6 +48,7 @@ typedef struct
   uint32_t last_tx_tick;
 } DAQ_SERVICE_Diagnostics;
 
+void DAQ_SERVICE_SetSensor(const BSP_SensorDriver *drv);
 void DAQ_SERVICE_Init(void);
 void DAQ_SERVICE_Process(void);
 DAQ_SERVICE_State DAQ_SERVICE_GetState(void);

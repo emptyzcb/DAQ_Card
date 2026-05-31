@@ -4,13 +4,14 @@
 #include <stdio.h>
 
 #include "bsp_console.h"
-#include "bsp_imu660rc.h"
+#include "bsp_sensor.h"
 #include "stm32f4xx_hal.h"
 #include "stream_protocol.h"
 
+static const BSP_SensorDriver *sensor;
 static DAQ_SERVICE_Config daq_config = {
   100U,
-  BSP_IMU660RC_GYRO_RANGE_2000DPS,
+  4U,  /* default_range, will be overridden by sensor driver */
   DAQ_SERVICE_OUTPUT_TEXT
 };
 static DAQ_SERVICE_Diagnostics daq_diagnostics;
@@ -45,7 +46,8 @@ static int validate_config(const DAQ_SERVICE_Config *config)
     return 0;
   }
 
-  if (config->gyro_range > BSP_IMU660RC_GYRO_RANGE_4000DPS)
+  if ((sensor != NULL) && (sensor->ValidateRange != NULL) &&
+      !sensor->ValidateRange(config->sensor_range))
   {
     return 0;
   }
@@ -114,16 +116,16 @@ static int write_console(const uint8_t *data, uint16_t length)
   return 1;
 }
 
-static void report_gyro_text(const BSP_IMU660RC_GyroData *data)
+static void report_gyro_text(const BSP_SensorData *data)
 {
   char gyro_text[72];
   char line[96];
   int length;
 
   format_scaled(gyro_text, sizeof(gyro_text), "gyro[dps]",
-                scale_float(data->x_dps, 1000.0f),
-                scale_float(data->y_dps, 1000.0f),
-                scale_float(data->z_dps, 1000.0f),
+                scale_float(data->x_conv, 1000.0f),
+                scale_float(data->y_conv, 1000.0f),
+                scale_float(data->z_conv, 1000.0f),
                 1000U);
   length = snprintf(line, sizeof(line), "%s\r\n", gyro_text);
   if (length > 0)
@@ -132,7 +134,7 @@ static void report_gyro_text(const BSP_IMU660RC_GyroData *data)
   }
 }
 
-static void report_gyro_binary(const BSP_IMU660RC_GyroData *data, uint32_t timestamp_ms)
+static void report_gyro_binary(const BSP_SensorData *data, uint32_t timestamp_ms)
 {
   STREAM_PROTOCOL_GyroSample sample;
   uint8_t frame[STREAM_PROTOCOL_MAX_FRAME_SIZE];
@@ -141,9 +143,9 @@ static void report_gyro_binary(const BSP_IMU660RC_GyroData *data, uint32_t times
   sample.x_raw = data->x_raw;
   sample.y_raw = data->y_raw;
   sample.z_raw = data->z_raw;
-  sample.x_mdps = scale_float(data->x_dps, 1000.0f);
-  sample.y_mdps = scale_float(data->y_dps, 1000.0f);
-  sample.z_mdps = scale_float(data->z_dps, 1000.0f);
+  sample.x_mdps = scale_float(data->x_conv, 1000.0f);
+  sample.y_mdps = scale_float(data->y_conv, 1000.0f);
+  sample.z_mdps = scale_float(data->z_conv, 1000.0f);
 
   frame_length = STREAM_PROTOCOL_EncodeGyro(daq_frame_sequence,
                                             timestamp_ms,
@@ -161,9 +163,19 @@ static void report_gyro_binary(const BSP_IMU660RC_GyroData *data, uint32_t times
   daq_frame_sequence++;
 }
 
+void DAQ_SERVICE_SetSensor(const BSP_SensorDriver *drv)
+{
+  sensor = drv;
+  if ((drv != NULL) && (drv->default_range != 0U))
+  {
+    daq_config.sensor_range = drv->default_range;
+  }
+}
+
 void DAQ_SERVICE_Init(void)
 {
-  const char banner[] = "IMU660RC gyro init...\r\n";
+  char banner[48];
+  int banner_len;
 
   daq_diagnostics.state = DAQ_SERVICE_STATE_IDLE;
   daq_diagnostics.last_error = DAQ_SERVICE_ERROR_NONE;
@@ -176,14 +188,33 @@ void DAQ_SERVICE_Init(void)
   daq_diagnostics.last_tx_tick = 0U;
   daq_frame_sequence = 0U;
 
-  (void)write_console((const uint8_t *)banner, (uint16_t)(sizeof(banner) - 1U));
-
-  if (BSP_IMU660RC_GyroInit(daq_config.gyro_range))
+  if (sensor == NULL)
   {
+    daq_diagnostics.state = DAQ_SERVICE_STATE_ERROR;
+    set_error(DAQ_SERVICE_ERROR_INVALID_CONFIG);
+    (void)write_console((const uint8_t *)"no sensor driver\r\n", 18U);
+    return;
+  }
+
+  banner_len = snprintf(banner, sizeof(banner), "%s init...\r\n", sensor->name);
+  if (banner_len > 0)
+  {
+    (void)write_console((const uint8_t *)banner, (uint16_t)banner_len);
+  }
+
+  if (sensor->Init(daq_config.sensor_range))
+  {
+    char ready_msg[32];
+    int ready_len;
+
     daq_diagnostics.state = DAQ_SERVICE_STATE_RUNNING;
     daq_diagnostics.last_sample_tick = HAL_GetTick();
-    daq_diagnostics.imu_chip_id = BSP_IMU660RC_ReadChipId();
-    (void)write_console((const uint8_t *)"IMU660RC gyro ready\r\n", 21U);
+    daq_diagnostics.imu_chip_id = sensor->ReadChipId();
+    ready_len = snprintf(ready_msg, sizeof(ready_msg), "%s ready\r\n", sensor->name);
+    if (ready_len > 0)
+    {
+      (void)write_console((const uint8_t *)ready_msg, (uint16_t)ready_len);
+    }
   }
   else
   {
@@ -192,9 +223,9 @@ void DAQ_SERVICE_Init(void)
 
     daq_diagnostics.state = DAQ_SERVICE_STATE_ERROR;
     set_error(DAQ_SERVICE_ERROR_IMU_INIT_FAILED);
-    daq_diagnostics.imu_chip_id = BSP_IMU660RC_ReadChipId();
-    length = snprintf(line, sizeof(line), "IMU660RC init failed, id=0x%02X\r\n",
-                      daq_diagnostics.imu_chip_id);
+    daq_diagnostics.imu_chip_id = sensor->ReadChipId();
+    length = snprintf(line, sizeof(line), "%s init failed, id=0x%02X\r\n",
+                      sensor->name, daq_diagnostics.imu_chip_id);
     if (length > 0)
     {
       (void)write_console((const uint8_t *)line, (uint16_t)length);
@@ -213,11 +244,11 @@ void DAQ_SERVICE_Process(void)
 
   if ((now - daq_diagnostics.last_sample_tick) >= daq_config.sample_period_ms)
   {
-    BSP_IMU660RC_GyroData data;
+    BSP_SensorData data;
 
     daq_diagnostics.last_sample_tick = now;
     daq_diagnostics.sample_count++;
-    BSP_IMU660RC_GyroRead(&data);
+    sensor->Read(&data);
 
     if (is_output_text_enabled())
     {
@@ -257,7 +288,7 @@ int DAQ_SERVICE_SetConfig(const DAQ_SERVICE_Config *config)
   }
 
   if ((daq_diagnostics.state == DAQ_SERVICE_STATE_RUNNING) &&
-      (config->gyro_range != daq_config.gyro_range))
+      (config->sensor_range != daq_config.sensor_range))
   {
     set_error(DAQ_SERVICE_ERROR_INVALID_CONFIG);
     return 0;

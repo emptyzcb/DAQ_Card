@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include "bsp_sensor.h"
 #include "stm32f4xx_hal.h"
 
 /*
@@ -54,5 +55,7 @@ typedef struct
 int BSP_IMU660RC_GyroInit(BSP_IMU660RC_GyroRange range);
 void BSP_IMU660RC_GyroRead(BSP_IMU660RC_GyroData *data);
 uint8_t BSP_IMU660RC_ReadChipId(void);
+
+extern const BSP_SensorDriver BSP_IMU660RC_Driver;
 
 #endif /* BSP_IMU660RC_H */
