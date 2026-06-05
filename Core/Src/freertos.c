@@ -36,6 +36,24 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+//启动任务定义,该任务用于创建其他任务
+TaskHandle_t  TASKS_START_Handler;
+configSTACK_DEPTH_TYPE  DEPTH_TYPE_TASKS_START=128;
+#define TASKS_START_Priority 10
+void TASKS_START(void *arg);
+
+//TASK01相关参数配置//初始时被挂起，中断触发而被其他任务恢复
+TaskHandle_t  TASK01_PRINTF_Handler;
+configSTACK_DEPTH_TYPE  DEPTH_TYPE_TASK01_PRINTF=128;
+#define TASK01_PRINTF_Priority 3
+void TASK01_PRINTF(void *arg);
+
+//TASK02相关参数配置
+TaskHandle_t  TASK02_Resume_Handler;
+configSTACK_DEPTH_TYPE  DEPTH_TYPE_TASK02_Resume=128;
+#define TASK02_Resume_Priority 2
+void TASK02_Resume(void *arg);
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -52,6 +70,8 @@ osThreadId ledTaskHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
+void vMyFreeRTOS_Task_Start(void);
+void TASKS_START(void *arg);
 
 /* USER CODE END FunctionPrototypes */
 
@@ -106,12 +126,15 @@ void MX_FREERTOS_Init(void) {
   /* definition and creation of defaultTask */
   osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
-
+  
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
-  /* USER CODE END RTOS_THREADS */
+  vMyFreeRTOS_Task_Start();
+    
   osThreadDef(ledTask, StartLedTask, osPriorityBelowNormal, 0, 128);
   ledTaskHandle = osThreadCreate(osThread(ledTask), NULL);
+  /* USER CODE END RTOS_THREADS */
+
 
 }
 
@@ -138,11 +161,53 @@ void StartDefaultTask(void const * argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
+//此函数不是线程
+void vMyFreeRTOS_Task_Start(void)
+{
+    xTaskCreate(
+    
+                TASKS_START,
+                "TASKS_START",
+                DEPTH_TYPE_TASKS_START,
+                NULL,
+                TASKS_START_Priority,
+                &TASKS_START_Handler
+    
+                );
+    
+    vTaskStartScheduler();
+}
+
+//此任务用于创建其他任务，创建完后被删除
+void TASKS_START(void *arg)
+{
+    //关闭任务调度器
+    vTaskSuspendAll();	
+
+    xTaskCreate(
+
+                TASK01_PRINTF,
+                "TASK01_PRINTF",
+                DEPTH_TYPE_TASK01_PRINTF,
+                NULL,
+                TASK01_PRINTF_Priority,
+                &TASK01_PRINTF_Handler
+    );
+    
+    
+    //删除本任务
+    vTaskDelete(NULL);    
+    //开启任务调度器
+    xTaskResumeAll();
+}
+
 
 void StartLedTask(void const * argument)
 {
   (void)argument;
   APP_RunLedBlink();
 }
+
+
 
 /* USER CODE END Application */
