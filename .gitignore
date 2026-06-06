@@ -1,0 +1,38 @@
+# Build outputs
+MDK-ARM/F430VI/
+**/Objects/
+**/Listings/
+**/RTE/
+
+# Large unused CMSIS DSP package
+Drivers/CMSIS/DSP/
+
+# Keil generated artifacts
+*.o
+*.d
+*.crf
+*.lst
+*.map
+*.htm
+*.build_log.htm
+*.axf
+*.hex
+*.bin
+*.elf
+*.lnp
+*.sct
+*.dep
+
+# Keil user/session files
+*.uvguix.*
+*.uvgui.*
+*.uvoptx
+*.uvopt
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+*.tmp
+Thumbs.db
+desktop.ini
