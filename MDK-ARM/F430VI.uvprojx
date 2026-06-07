@@ -336,7 +336,7 @@
               <MiscControls></MiscControls>
               <Define>USE_PWR_LDO_SUPPLY,USE_HAL_DRIVER,STM32H743xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../BSP/Inc;../Application/Inc;../Platform/Inc;../Services/Inc;../bmi270_api</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../BSP/Inc;../Application/Inc;../Platform/Inc;../Services/Inc;../bmi270_api;../Algorithm/Inc</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -629,6 +629,11 @@
               <FileName>stream_protocol.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Services/Src/stream_protocol.c</FilePath>
+            </File>
+            <File>
+              <FileName>datahub.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Services/Src/datahub.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1592,6 +1597,26 @@
                   </Cads>
                 </FileArmAds>
               </FileOption>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Algorithm</GroupName>
+          <Files>
+            <File>
+              <FileName>quaternion.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Algorithm/Src/quaternion.c</FilePath>
+            </File>
+            <File>
+              <FileName>attitude_est.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Algorithm/Src/attitude_est.c</FilePath>
+            </File>
+            <File>
+              <FileName>madgwick.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Algorithm/Src/madgwick.c</FilePath>
             </File>
           </Files>
         </Group>

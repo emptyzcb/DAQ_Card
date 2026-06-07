@@ -28,9 +28,12 @@ extern "C" {
 #include "bsp_sensor.h"
 
 #include "daq_service.h"
+#include "datahub.h"
 #include "imu_service.h"
 #include "led_blink.h"
 #include "stream_protocol.h"
+
+#include "attitude_est.h"
 
 #ifdef __cplusplus
 }

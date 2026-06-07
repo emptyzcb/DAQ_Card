@@ -3,6 +3,7 @@
 void APP_Init(void)
 {
   PLATFORM_Init();
+  DataHub_Init();
 }
 
 void APP_RunOnce(void)
