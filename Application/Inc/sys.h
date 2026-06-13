@@ -23,14 +23,17 @@ extern "C" {
 #include "platform.h"
 
 #include "bsp_console.h"
+#include "bsp_ad7606.h"
 #include "bsp_imu660rc.h"
 #include "bsp_led.h"
 #include "bsp_sensor.h"
 
 #include "daq_service.h"
+#include "ad7606_service.h"
 #include "datahub.h"
 #include "imu_service.h"
 #include "led_blink.h"
+#include "rs485_uart.h"
 #include "stream_protocol.h"
 
 #include "attitude_est.h"
