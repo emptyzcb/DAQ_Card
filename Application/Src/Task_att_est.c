@@ -24,8 +24,6 @@ void Task_att_est(void *arg)
     float dt;                    /* 两次姿态更新之间的时间间隔，单位 s */
 
     (void)arg;                   /* 当前线程暂时不使用传入参数，避免编译器未使用警告 */
-
-    DataHub_Init();              /* 初始化全局数据中心 */
     (void)IMU_SERVICE_Init();    /* 初始化 IMU 服务层，内部会初始化 BMI270 */
 
     last_update_tick = xTaskGetTickCount(); /* 姿态更新 tick 从当前时间开始 */

@@ -63,3 +63,69 @@ void DataHub_SetImuReadResult(int read_rslt)
     g_datahub.imu.last_read_rslt = read_rslt;     /* 更新最近一次 IMU 读取结果 */
     taskEXIT_CRITICAL();                          /* 退出临界区 */
 }
+
+void DataHub_PublishAd7606(const DataHubAd7606Data *ad7606)
+{
+    uint32_t next_seq;
+
+    if (ad7606 == 0)
+    {
+        return;
+    }
+
+    taskENTER_CRITICAL();
+    next_seq = g_datahub.ad7606.seq + 1U;
+    g_datahub.ad7606 = *ad7606;
+    g_datahub.ad7606.seq = next_seq;
+    taskEXIT_CRITICAL();
+}
+
+void DataHub_GetAd7606(DataHubAd7606Data *ad7606)
+{
+    if (ad7606 == 0)
+    {
+        return;
+    }
+
+    taskENTER_CRITICAL();
+    *ad7606 = g_datahub.ad7606;
+    taskEXIT_CRITICAL();
+}
+
+uint32_t DataHub_GetAd7606Seq(void)
+{
+    uint32_t seq;
+
+    taskENTER_CRITICAL();
+    seq = g_datahub.ad7606.seq;
+    taskEXIT_CRITICAL();
+
+    return seq;
+}
+
+void DataHub_SetAd7606Ready(int ready)
+{
+    taskENTER_CRITICAL();
+    g_datahub.ad7606.ad7606_ready = ready;
+    taskEXIT_CRITICAL();
+}
+
+void DataHub_SetAd7606ReadResult(int read_ok)
+{
+    taskENTER_CRITICAL();
+    g_datahub.ad7606.last_read_ok = read_ok;
+    taskEXIT_CRITICAL();
+}
+
+void DataHub_UpdateAd7606Status(uint32_t sample_count,
+                                uint32_t timeout_count,
+                                int ready,
+                                int read_ok)
+{
+    taskENTER_CRITICAL();
+    g_datahub.ad7606.sample_count = sample_count;
+    g_datahub.ad7606.timeout_count = timeout_count;
+    g_datahub.ad7606.ad7606_ready = ready;
+    g_datahub.ad7606.last_read_ok = read_ok;
+    taskEXIT_CRITICAL();
+}

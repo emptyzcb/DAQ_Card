@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "attitude_est.h"
+#include "bsp_ad7606.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,6 +43,24 @@ typedef struct
 } DataHubImuData;
 
 /*
+ * DataHubAd7606Data
+ *
+ * Latest AD7606 8-channel analog sample snapshot.
+ */
+typedef struct
+{
+    uint32_t seq;             /* Publish sequence, increments on each valid AD7606 sample */
+    uint32_t timestamp_ms;    /* HAL tick when the sample was captured */
+    uint32_t sample_count;    /* Successful AD7606 sample counter */
+    uint32_t timeout_count;   /* AD7606 timeout/error counter */
+    int ad7606_ready;         /* AD7606 service ready/running flag */
+    int last_read_ok;         /* Last AD7606 read result: 1 ok, 0 failed */
+
+    int16_t raw[BSP_AD7606_CHANNEL_COUNT]; /* Raw signed ADC codes */
+    int32_t mv[BSP_AD7606_CHANNEL_COUNT];  /* Converted voltage, unit mV */
+} DataHubAd7606Data;
+
+/*
  * DataHubState
  *
  * 全局数据中心。
@@ -50,6 +69,7 @@ typedef struct
 typedef struct
 {
     DataHubImuData imu;      /* IMU/姿态最新快照 */
+    DataHubAd7606Data ad7606; /* AD7606 latest sample snapshot */
 } DataHubState;
 
 extern DataHubState g_datahub; /* Keil Watch 可直接观察这个全局数据中心 */
@@ -60,7 +80,15 @@ void DataHub_GetImu(DataHubImuData *imu);
 uint32_t DataHub_GetImuSeq(void);
 void DataHub_SetImuReady(int ready);
 void DataHub_SetImuReadResult(int read_rslt);
-
+void DataHub_PublishAd7606(const DataHubAd7606Data *ad7606);
+void DataHub_GetAd7606(DataHubAd7606Data *ad7606);
+uint32_t DataHub_GetAd7606Seq(void);
+void DataHub_SetAd7606Ready(int ready);
+void DataHub_SetAd7606ReadResult(int read_ok);
+void DataHub_UpdateAd7606Status(uint32_t sample_count,
+                                uint32_t timeout_count,
+                                int ready,
+                                int read_ok);
 #ifdef __cplusplus
 }
 #endif
