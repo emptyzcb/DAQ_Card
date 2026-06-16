@@ -4,6 +4,7 @@ void PLATFORM_Init(void)
 {
   BSP_CONSOLE_Init();
   RS485_UART_Init();
+  CAN_SERVICE_Init();
   AD7606_SERVICE_Init();
   DAQ_SERVICE_SetSensor(&BSP_IMU660RC_Driver);
   DAQ_SERVICE_Init();

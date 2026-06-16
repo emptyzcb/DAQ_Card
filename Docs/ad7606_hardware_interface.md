@@ -57,7 +57,7 @@ raw_u16 = (uint16_t)(GPIOE->IDR & 0xFFFFU);
 
 | AD7606 引脚 | STM32H743 引脚 | 方向 | 默认电平 | 说明 |
 |---|---|---|---|---|
-| CONVST_A / CONVST_B | PD0 | MCU 输出 | 高 | 启动同步转换，建议 A/B 短接一起控制 |
+| CONVST_A / CONVST_B | PD8 | MCU 输出 | 高 | 启动同步转换，建议 A/B 短接一起控制；PD0 已用于 CAN1_RX |
 | RD | PD1 | MCU 输出 | 高 | 并口读脉冲 |
 | CS | PD2 | MCU 输出 | 高 | 片选 |
 | RESET | PD3 | MCU 输出 | 低 | 复位 AD7606 |
@@ -222,4 +222,3 @@ printf("AD7606 samples=%lu timeout=%lu\r\n",
 3. 增加通道校准参数：零点、比例、滤波系数。
 4. 增加过压、断线、异常值诊断。
 5. 如果采样率提高，改为定时器精确触发 CONVST，并使用专门采集任务读取。
-

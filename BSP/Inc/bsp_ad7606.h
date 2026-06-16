@@ -24,7 +24,7 @@ extern "C" {
 #define BSP_AD7606_DATA_MASK      0xFFFFU
 
 #define BSP_AD7606_CONVST_GPIO_Port GPIOD
-#define BSP_AD7606_CONVST_Pin       GPIO_PIN_0
+#define BSP_AD7606_CONVST_Pin       GPIO_PIN_8
 
 #define BSP_AD7606_RD_GPIO_Port GPIOD
 #define BSP_AD7606_RD_Pin       GPIO_PIN_1

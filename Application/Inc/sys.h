@@ -16,6 +16,7 @@ extern "C" {
 
 #include "gpio.h"
 #include "usart.h"
+#include "fdcan.h"
 
 #include "app.h"
 #include "ALL_Task.h"
@@ -30,6 +31,7 @@ extern "C" {
 
 #include "daq_service.h"
 #include "ad7606_service.h"
+#include "can_service.h"
 #include "datahub.h"
 #include "imu_service.h"
 #include "led_blink.h"

@@ -516,6 +516,11 @@
               </FileOption>
             </File>
             <File>
+              <FileName>fdcan.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Core/Src/fdcan.c</FilePath>
+            </File>
+            <File>
               <FileName>stm32h7xx_it.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/stm32h7xx_it.c</FilePath>
@@ -670,6 +675,21 @@
               <FileType>1</FileType>
               <FilePath>../Services/Src/rs485_uart_irq.c</FilePath>
             </File>
+            <File>
+              <FileName>can_service.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Services/Src/can_service.c</FilePath>
+            </File>
+            <File>
+              <FileName>can_service.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../Services/Inc/can_service.h</FilePath>
+            </File>
+            <File>
+              <FileName>can_service_irq.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Services/Src/can_service_irq.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -779,6 +799,11 @@
               <FileName>stm32h7xx_hal_exti.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_exti.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32h7xx_hal_fdcan.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_fdcan.c</FilePath>
             </File>
             <File>
               <FileName>stm32h7xx_hal_spi.c</FileName>
