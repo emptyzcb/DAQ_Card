@@ -44,8 +44,6 @@ void CAN_SERVICE_Init(void)
 
   memset(&can_diag, 0, sizeof(can_diag));
 
-  MX_FDCAN1_Init();
-
   filter.IdType = FDCAN_STANDARD_ID;
   filter.FilterIndex = 0U;
   filter.FilterType = FDCAN_FILTER_MASK;
