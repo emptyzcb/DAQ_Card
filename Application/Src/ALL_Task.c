@@ -23,6 +23,12 @@ configSTACK_DEPTH_TYPE DEPTH_TYPE_Task_ad7606 = 512;
 #define Task_ad7606_Priority 3
 void Task_ad7606(void *arg);
 
+//Digital IO smoke-test task
+TaskHandle_t Task_digital_io_Handler;
+configSTACK_DEPTH_TYPE DEPTH_TYPE_Task_digital_io = 256;
+#define Task_digital_io_Priority 2
+void Task_digital_io(void *arg);
+
 void vMyFreeRTOS_Task_Start(void)
 {
     xTaskCreate(
@@ -64,6 +70,14 @@ void TASKS_START(void *arg)
         NULL,
         Task_ad7606_Priority,
         &Task_ad7606_Handler);
+
+    xTaskCreate(
+        Task_digital_io,
+        "Task_digital_io",
+        DEPTH_TYPE_Task_digital_io,
+        NULL,
+        Task_digital_io_Priority,
+        &Task_digital_io_Handler);
 
     xTaskResumeAll();
     vTaskDelete(NULL);

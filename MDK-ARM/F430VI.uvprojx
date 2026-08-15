@@ -552,6 +552,16 @@
               <FilePath>..\Application\Inc\Task_att_est.h</FilePath>
             </File>
             <File>
+              <FileName>Task_digital_io.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Application\Src\Task_digital_io.c</FilePath>
+            </File>
+            <File>
+              <FileName>Task_digital_io.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Application\Inc\Task_digital_io.h</FilePath>
+            </File>
+            <File>
               <FileName>sys.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Application/Src/sys.c</FilePath>
@@ -590,6 +600,21 @@
               <FileName>bsp_ad7606.h</FileName>
               <FileType>5</FileType>
               <FilePath>../BSP/Inc/bsp_ad7606.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_digital_io.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../BSP/Src/bsp_digital_io.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_digital_io.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../BSP/Inc/bsp_digital_io.h</FilePath>
+            </File>
+            <File>
+              <FileName>board_pins.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../BSP/Inc/board_pins.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -665,6 +690,16 @@
               <FileName>can_service.h</FileName>
               <FileType>5</FileType>
               <FilePath>../Services/Inc/can_service.h</FilePath>
+            </File>
+            <File>
+              <FileName>digital_io_service.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Services/Src/digital_io_service.c</FilePath>
+            </File>
+            <File>
+              <FileName>digital_io_service.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../Services/Inc/digital_io_service.h</FilePath>
             </File>
           </Files>
         </Group>

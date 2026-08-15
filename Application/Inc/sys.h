@@ -8,6 +8,7 @@ extern "C" {
 #include <stdint.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "main.h"
 #include "cmsis_os.h"
@@ -21,10 +22,13 @@ extern "C" {
 #include "app.h"
 #include "ALL_Task.h"
 #include "Task_att_est.h"
+#include "Task_digital_io.h"
 #include "platform.h"
 
+#include "board_pins.h"
 #include "bsp_console.h"
 #include "bsp_ad7606.h"
+#include "bsp_digital_io.h"
 #include "bsp_imu660rc.h"
 #include "bsp_led.h"
 #include "bsp_sensor.h"
@@ -33,6 +37,7 @@ extern "C" {
 #include "ad7606_service.h"
 #include "can_service.h"
 #include "datahub.h"
+#include "digital_io_service.h"
 #include "imu_service.h"
 #include "led_blink.h"
 #include "rs485_uart.h"

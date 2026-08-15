@@ -30,8 +30,11 @@ Drivers/CMSIS/DSP/
 *.uvopt
 
 # Editor and OS files
+tmp/
 .vscode/
 .idea/
+__pycache__/
+*.pyc
 *.swp
 *.tmp
 Thumbs.db

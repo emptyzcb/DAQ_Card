@@ -236,7 +236,7 @@ void DAQ_SERVICE_Process(void)
 
   if ((now - daq_diagnostics.last_sample_tick) >= daq_config.sample_period_ms)
   {
-    BSP_SensorData data;
+    BSP_SensorData data = {0};
 
     daq_diagnostics.last_sample_tick = now;
     daq_diagnostics.sample_count++;

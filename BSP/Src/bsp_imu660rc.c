@@ -713,6 +713,7 @@ void BSP_IMU660RC_AccelRead(BSP_IMU660RC_AccelData *data)
     return;
   }
 
+  memset(data, 0, sizeof(*data));
   rslt = bmi270_read_sample(&sample);
   if (rslt != BMI2_OK)
   {
@@ -733,6 +734,7 @@ void BSP_IMU660RC_GyroRead(BSP_IMU660RC_GyroData *data)
     return;
   }
 
+  memset(data, 0, sizeof(*data));
   rslt = bmi270_read_sample(&sample);
   if (rslt != BMI2_OK)
   {
@@ -753,6 +755,7 @@ int BSP_IMU660RC_Read6Axis(BSP_IMU660RC_6AxisData *data)
     return BMI2_E_NULL_PTR;
   }
 
+  memset(data, 0, sizeof(*data));
   rslt = bmi270_read_sample(&sample);
   if (rslt != BMI2_OK)
   {
