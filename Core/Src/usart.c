@@ -44,6 +44,10 @@ void _sys_exit(int x)
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
 
+/* USART3 RX DMA is disabled in PA0 LED-only mode, but other compiled modules
+   still reference the handle symbol. Keep the definition available for link. */
+DMA_HandleTypeDef hdma_usart3_rx;
+
 /* USART2 init function */
 
 void MX_USART2_UART_Init(void)
@@ -203,6 +207,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN USART3_MspInit 1 */
+#if !APP_PA0_LED_ONLY
     __HAL_RCC_DMA1_CLK_ENABLE();
 
     hdma_usart3_rx.Instance = DMA1_Stream0;
@@ -227,6 +232,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
 
     HAL_NVIC_SetPriority(USART3_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(USART3_IRQn);
+#endif
 
   /* USER CODE END USART3_MspInit 1 */
   }
@@ -268,10 +274,12 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
     HAL_GPIO_DeInit(GPIOB, GPIO_PIN_10|GPIO_PIN_11);
 
   /* USER CODE BEGIN USART3_MspDeInit 1 */
+#if !APP_PA0_LED_ONLY
     HAL_DMA_DeInit(uartHandle->hdmarx);
 
     HAL_NVIC_DisableIRQ(DMA1_Stream0_IRQn);
     HAL_NVIC_DisableIRQ(USART3_IRQn);
+#endif
 
   /* USER CODE END USART3_MspDeInit 1 */
   }

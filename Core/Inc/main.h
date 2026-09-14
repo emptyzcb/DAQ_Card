@@ -61,6 +61,14 @@ void Error_Handler(void);
 #define RS485_DE_RE_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
+#define APP_PA0_LED_ONLY 1U
+
+#define PA0_LED_Pin GPIO_PIN_0
+#define PA0_LED_GPIO_Port GPIOA
+
+/* LED anode is tied to PA0, so high level turns it on. */
+#define PA0_LED_ON GPIO_PIN_SET
+#define PA0_LED_OFF GPIO_PIN_RESET
 
 /* USER CODE END Private defines */
 

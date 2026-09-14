@@ -60,6 +60,93 @@ void MX_FREERTOS_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+static void PA0_LED_Write(GPIO_PinState state)
+{
+  HAL_GPIO_WritePin(PA0_LED_GPIO_Port, PA0_LED_Pin, state);
+}
+
+static void PA0_LED_Blink(uint8_t count, uint32_t on_ms, uint32_t off_ms)
+{
+  uint8_t index;
+
+  for (index = 0U; index < count; index++)
+  {
+    PA0_LED_Write(PA0_LED_ON);
+    HAL_Delay(on_ms);
+    PA0_LED_Write(PA0_LED_OFF);
+    HAL_Delay(off_ms);
+  }
+}
+
+static void PA0_LED_RepeatCode(uint8_t count, uint32_t on_ms, uint32_t off_ms, uint32_t pause_ms)
+{
+  for (;;)
+  {
+    PA0_LED_Blink(count, on_ms, off_ms);
+    HAL_Delay(pause_ms);
+  }
+}
+
+static void PA0_LED_HSEProbe(void)
+{
+  RCC_OscInitTypeDef osc = {0};
+  RCC_ClkInitTypeDef clk = {0};
+  uint32_t start_tick;
+
+  MX_GPIO_Init();
+
+  /* Power-on marker: firmware reached the LED diagnostic path. */
+  PA0_LED_Blink(1U, 120U, 300U);
+
+  __HAL_RCC_HSE_CONFIG(RCC_HSE_ON);
+
+  start_tick = HAL_GetTick();
+  while (__HAL_RCC_GET_FLAG(RCC_FLAG_HSERDY) == RESET)
+  {
+    if ((HAL_GetTick() - start_tick) >= 1500U)
+    {
+      /* HSE failed: three fast blinks, then a pause. */
+      PA0_LED_RepeatCode(3U, 120U, 120U, 900U);
+    }
+  }
+
+  osc.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  osc.HSEState = RCC_HSE_ON;
+  osc.PLL.PLLState = RCC_PLL_ON;
+  osc.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  osc.PLL.PLLM = 5U;
+  osc.PLL.PLLN = 96U;
+  osc.PLL.PLLP = 2U;
+  osc.PLL.PLLQ = 4U;
+  osc.PLL.PLLR = 2U;
+  osc.PLL.PLLRGE = RCC_PLL1VCIRANGE_2;
+  osc.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
+  osc.PLL.PLLFRACN = 0U;
+  if (HAL_RCC_OscConfig(&osc) != HAL_OK)
+  {
+    /* HSE ready but PLL could not lock: four fast blinks. */
+    PA0_LED_RepeatCode(4U, 120U, 120U, 900U);
+  }
+
+  clk.ClockType = RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK |
+                  RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2 |
+                  RCC_CLOCKTYPE_D3PCLK1 | RCC_CLOCKTYPE_D1PCLK1;
+  clk.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  clk.SYSCLKDivider = RCC_SYSCLK_DIV1;
+  clk.AHBCLKDivider = RCC_HCLK_DIV2;
+  clk.APB3CLKDivider = RCC_APB3_DIV2;
+  clk.APB1CLKDivider = RCC_APB1_DIV2;
+  clk.APB2CLKDivider = RCC_APB2_DIV2;
+  clk.APB4CLKDivider = RCC_APB4_DIV2;
+  if (HAL_RCC_ClockConfig(&clk, FLASH_LATENCY_4) != HAL_OK)
+  {
+    /* PLL locked but SYSCLK switch failed: four fast blinks. */
+    PA0_LED_RepeatCode(4U, 120U, 120U, 900U);
+  }
+
+  /* HSE drives PLL and SYSCLK successfully: two slow blinks. */
+  PA0_LED_RepeatCode(2U, 600U, 300U, 1000U);
+}
 
 /* USER CODE END 0 */
 
@@ -85,6 +172,11 @@ int main(void)
   /* USER CODE BEGIN Init */
 
   /* USER CODE END Init */
+
+  if (APP_PA0_LED_ONLY)
+  {
+    PA0_LED_HSEProbe();
+  }
 
   /* Configure the system clock */
   SystemClock_Config();
