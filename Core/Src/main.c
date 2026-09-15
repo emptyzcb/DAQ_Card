@@ -24,6 +24,8 @@
 #include "usart.h"
 #include "gpio.h"
 
+#include <string.h>
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -78,74 +80,63 @@ static void PA0_LED_Blink(uint8_t count, uint32_t on_ms, uint32_t off_ms)
   }
 }
 
-static void PA0_LED_RepeatCode(uint8_t count, uint32_t on_ms, uint32_t off_ms, uint32_t pause_ms)
+static void UART_Debug_Send(const char *text)
 {
-  for (;;)
-  {
-    PA0_LED_Blink(count, on_ms, off_ms);
-    HAL_Delay(pause_ms);
-  }
+  HAL_UART_Transmit(&huart2, (uint8_t *)text, (uint16_t)strlen(text), 1000U);
 }
 
-static void PA0_LED_HSEProbe(void)
+static void UART_Debug_Run(void)
 {
-  RCC_OscInitTypeDef osc = {0};
-  RCC_ClkInitTypeDef clk = {0};
-  uint32_t start_tick;
+  uint8_t received;
+  uint8_t led_state = 0U;
+  uint32_t last_heartbeat;
 
   MX_GPIO_Init();
-
-  /* Power-on marker: firmware reached the LED diagnostic path. */
   PA0_LED_Blink(1U, 120U, 300U);
 
-  __HAL_RCC_HSE_CONFIG(RCC_HSE_ON);
+  /* Run the application from the installed 25 MHz HSE. */
+  SystemClock_Config();
 
-  start_tick = HAL_GetTick();
-  while (__HAL_RCC_GET_FLAG(RCC_FLAG_HSERDY) == RESET)
+  MX_USART2_UART_Init();
+  PA0_LED_Blink(2U, 600U, 300U);
+
+  UART_Debug_Send("DAQ UART debug ready\r\n");
+  UART_Debug_Send("USART2 PA2=TX, PA3=RX, 115200 8N1\r\n");
+  UART_Debug_Send("Commands: h=help, s=status, l=toggle LED\r\n");
+  last_heartbeat = HAL_GetTick();
+
+  for (;;)
   {
-    if ((HAL_GetTick() - start_tick) >= 1500U)
+    if (HAL_UART_Receive(&huart2, &received, 1U, 50U) == HAL_OK)
     {
-      /* HSE failed: three fast blinks, then a pause. */
-      PA0_LED_RepeatCode(3U, 120U, 120U, 900U);
+      PA0_LED_Blink(1U, 40U, 40U);
+
+      if ((received == 'h') || (received == 'H'))
+      {
+        UART_Debug_Send("h: help, s: status, l: toggle LED\r\n");
+      }
+      else if ((received == 's') || (received == 'S'))
+      {
+        UART_Debug_Send("HSE=25MHz, PLL=240MHz SYSCLK, HCLK=120MHz\r\n");
+      }
+      else if ((received == 'l') || (received == 'L'))
+      {
+        led_state = (uint8_t)!led_state;
+        PA0_LED_Write(led_state ? PA0_LED_ON : PA0_LED_OFF);
+        UART_Debug_Send("LED toggled\r\n");
+      }
+      else
+      {
+        HAL_UART_Transmit(&huart2, &received, 1U, 1000U);
+      }
+    }
+
+    if ((HAL_GetTick() - last_heartbeat) >= 1000U)
+    {
+      PA0_LED_Blink(1U, 40U, 40U);
+      last_heartbeat = HAL_GetTick();
     }
   }
-
-  osc.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  osc.HSEState = RCC_HSE_ON;
-  osc.PLL.PLLState = RCC_PLL_ON;
-  osc.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  osc.PLL.PLLM = 5U;
-  osc.PLL.PLLN = 96U;
-  osc.PLL.PLLP = 2U;
-  osc.PLL.PLLQ = 4U;
-  osc.PLL.PLLR = 2U;
-  osc.PLL.PLLRGE = RCC_PLL1VCIRANGE_2;
-  osc.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
-  osc.PLL.PLLFRACN = 0U;
-  if (HAL_RCC_OscConfig(&osc) != HAL_OK)
-  {
-    /* HSE ready but PLL could not lock: four fast blinks. */
-    PA0_LED_RepeatCode(4U, 120U, 120U, 900U);
-  }
-
-  clk.ClockType = RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK |
-                  RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2 |
-                  RCC_CLOCKTYPE_D3PCLK1 | RCC_CLOCKTYPE_D1PCLK1;
-  clk.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  clk.SYSCLKDivider = RCC_SYSCLK_DIV1;
-  clk.AHBCLKDivider = RCC_HCLK_DIV2;
-  clk.APB3CLKDivider = RCC_APB3_DIV2;
-  clk.APB1CLKDivider = RCC_APB1_DIV2;
-  clk.APB2CLKDivider = RCC_APB2_DIV2;
-  clk.APB4CLKDivider = RCC_APB4_DIV2;
-  if (HAL_RCC_ClockConfig(&clk, FLASH_LATENCY_4) != HAL_OK)
-  {
-    /* PLL locked but SYSCLK switch failed: four fast blinks. */
-    PA0_LED_RepeatCode(4U, 120U, 120U, 900U);
-  }
-
-  /* HSE drives PLL and SYSCLK successfully: two slow blinks. */
-  PA0_LED_RepeatCode(2U, 600U, 300U, 1000U);
 }
 
 /* USER CODE END 0 */
@@ -173,11 +164,9 @@ int main(void)
 
   /* USER CODE END Init */
 
-  if (APP_PA0_LED_ONLY)
-  {
-    PA0_LED_HSEProbe();
-  }
-
+#if APP_UART_DEBUG_ONLY
+  UART_Debug_Run();
+#else
   /* Configure the system clock */
   SystemClock_Config();
 
@@ -214,6 +203,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
+#endif
 }
 
 /**
@@ -238,18 +228,16 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.HSIState = RCC_HSI_DIV1;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 4;
-  RCC_OscInitStruct.PLL.PLLN = 60;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 5;
+  RCC_OscInitStruct.PLL.PLLN = 96;
   RCC_OscInitStruct.PLL.PLLP = 2;
-  RCC_OscInitStruct.PLL.PLLQ = 5;
+  RCC_OscInitStruct.PLL.PLLQ = 4;
   RCC_OscInitStruct.PLL.PLLR = 2;
-  RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
+  RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_2;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
   RCC_OscInitStruct.PLL.PLLFRACN = 0;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)

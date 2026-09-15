@@ -207,7 +207,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN USART3_MspInit 1 */
-#if !APP_PA0_LED_ONLY
+#if !APP_UART_DEBUG_ONLY
     __HAL_RCC_DMA1_CLK_ENABLE();
 
     hdma_usart3_rx.Instance = DMA1_Stream0;
@@ -274,7 +274,7 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
     HAL_GPIO_DeInit(GPIOB, GPIO_PIN_10|GPIO_PIN_11);
 
   /* USER CODE BEGIN USART3_MspDeInit 1 */
-#if !APP_PA0_LED_ONLY
+#if !APP_UART_DEBUG_ONLY
     HAL_DMA_DeInit(uartHandle->hdmarx);
 
     HAL_NVIC_DisableIRQ(DMA1_Stream0_IRQn);

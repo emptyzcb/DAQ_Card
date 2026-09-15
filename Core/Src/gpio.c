@@ -45,7 +45,7 @@ void MX_GPIO_Init(void)
 
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-  if (APP_PA0_LED_ONLY)
+  if (APP_UART_DEBUG_ONLY)
   {
     __HAL_RCC_GPIOA_CLK_ENABLE();
 
