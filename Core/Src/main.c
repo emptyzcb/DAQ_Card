@@ -67,19 +67,6 @@ static void PA0_LED_Write(GPIO_PinState state)
   HAL_GPIO_WritePin(PA0_LED_GPIO_Port, PA0_LED_Pin, state);
 }
 
-static void PA0_LED_Blink(uint8_t count, uint32_t on_ms, uint32_t off_ms)
-{
-  uint8_t index;
-
-  for (index = 0U; index < count; index++)
-  {
-    PA0_LED_Write(PA0_LED_ON);
-    HAL_Delay(on_ms);
-    PA0_LED_Write(PA0_LED_OFF);
-    HAL_Delay(off_ms);
-  }
-}
-
 static void UART_Debug_Send(const char *text)
 {
   HAL_UART_Transmit(&huart2, (uint8_t *)text, (uint16_t)strlen(text), 1000U);
@@ -87,53 +74,25 @@ static void UART_Debug_Send(const char *text)
 
 static void UART_Debug_Run(void)
 {
-  uint8_t received;
   uint8_t led_state = 0U;
   uint32_t last_heartbeat;
 
   MX_GPIO_Init();
-  PA0_LED_Blink(1U, 120U, 300U);
 
   /* Run the application from the installed 25 MHz HSE. */
   SystemClock_Config();
 
   MX_USART2_UART_Init();
-  PA0_LED_Blink(2U, 600U, 300U);
-
-  UART_Debug_Send("DAQ UART debug ready\r\n");
-  UART_Debug_Send("USART2 PA2=TX, PA3=RX, 115200 8N1\r\n");
-  UART_Debug_Send("Commands: h=help, s=status, l=toggle LED\r\n");
   last_heartbeat = HAL_GetTick();
 
   for (;;)
   {
-    if (HAL_UART_Receive(&huart2, &received, 1U, 50U) == HAL_OK)
-    {
-      PA0_LED_Blink(1U, 40U, 40U);
-
-      if ((received == 'h') || (received == 'H'))
-      {
-        UART_Debug_Send("h: help, s: status, l: toggle LED\r\n");
-      }
-      else if ((received == 's') || (received == 'S'))
-      {
-        UART_Debug_Send("HSE=25MHz, PLL=240MHz SYSCLK, HCLK=120MHz\r\n");
-      }
-      else if ((received == 'l') || (received == 'L'))
-      {
-        led_state = (uint8_t)!led_state;
-        PA0_LED_Write(led_state ? PA0_LED_ON : PA0_LED_OFF);
-        UART_Debug_Send("LED toggled\r\n");
-      }
-      else
-      {
-        HAL_UART_Transmit(&huart2, &received, 1U, 1000U);
-      }
-    }
-
     if ((HAL_GetTick() - last_heartbeat) >= 1000U)
     {
-      PA0_LED_Blink(1U, 40U, 40U);
+      led_state = (uint8_t)!led_state;
+      PA0_LED_Write(led_state ? PA0_LED_ON : PA0_LED_OFF);
+      UART_Debug_Send(led_state ? "DAQ heartbeat: LED=ON\r\n"
+                                : "DAQ heartbeat: LED=OFF\r\n");
       last_heartbeat = HAL_GetTick();
     }
   }
