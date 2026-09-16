@@ -67,12 +67,19 @@ static void PA0_LED_Write(GPIO_PinState state)
   HAL_GPIO_WritePin(PA0_LED_GPIO_Port, PA0_LED_Pin, state);
 }
 
-static void UART_Debug_Send(const char *text)
+static void RS485_SetDirection(GPIO_PinState state)
 {
-  HAL_UART_Transmit(&huart2, (uint8_t *)text, (uint16_t)strlen(text), 1000U);
+  HAL_GPIO_WritePin(RS485_DIR_GPIO_Port, RS485_DIR_Pin, state);
 }
 
-static void UART_Debug_Run(void)
+static void RS485_Debug_Send(const char *text)
+{
+  RS485_SetDirection(RS485_DIR_TX);
+  HAL_UART_Transmit(&huart1, (uint8_t *)text, (uint16_t)strlen(text), 1000U);
+  RS485_SetDirection(RS485_DIR_RX);
+}
+
+static void RS485_Debug_Run(void)
 {
   uint8_t led_state = 0U;
   uint32_t last_heartbeat;
@@ -82,7 +89,8 @@ static void UART_Debug_Run(void)
   /* Run the application from the installed 25 MHz HSE. */
   SystemClock_Config();
 
-  MX_USART2_UART_Init();
+  MX_USART1_UART_Init();
+  RS485_SetDirection(RS485_DIR_RX);
   last_heartbeat = HAL_GetTick();
 
   for (;;)
@@ -91,8 +99,8 @@ static void UART_Debug_Run(void)
     {
       led_state = (uint8_t)!led_state;
       PA0_LED_Write(led_state ? PA0_LED_ON : PA0_LED_OFF);
-      UART_Debug_Send(led_state ? "DAQ heartbeat: LED=ON\r\n"
-                                : "DAQ heartbeat: LED=OFF\r\n");
+      RS485_Debug_Send(led_state ? "RS485 heartbeat: LED=ON\r\n"
+                                  : "RS485 heartbeat: LED=OFF\r\n");
       last_heartbeat = HAL_GetTick();
     }
   }
@@ -123,8 +131,8 @@ int main(void)
 
   /* USER CODE END Init */
 
-#if APP_UART_DEBUG_ONLY
-  UART_Debug_Run();
+#if APP_RS485_DEBUG_ONLY
+  RS485_Debug_Run();
 #else
   /* Configure the system clock */
   SystemClock_Config();

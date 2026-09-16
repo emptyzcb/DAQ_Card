@@ -61,14 +61,21 @@ void Error_Handler(void);
 #define RS485_DE_RE_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
-#define APP_UART_DEBUG_ONLY 1U
+#define APP_RS485_DEBUG_ONLY 1U
 
 #define PA0_LED_Pin GPIO_PIN_0
 #define PA0_LED_GPIO_Port GPIOA
 
+#define RS485_DIR_Pin GPIO_PIN_12
+#define RS485_DIR_GPIO_Port GPIOA
+
 /* LED anode is tied to PA0, so high level turns it on. */
 #define PA0_LED_ON GPIO_PIN_SET
 #define PA0_LED_OFF GPIO_PIN_RESET
+
+/* RS485 transceiver direction: high for transmit, low for receive. */
+#define RS485_DIR_TX GPIO_PIN_SET
+#define RS485_DIR_RX GPIO_PIN_RESET
 
 /* USER CODE END Private defines */
 

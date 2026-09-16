@@ -45,13 +45,14 @@ void MX_GPIO_Init(void)
 
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-  if (APP_UART_DEBUG_ONLY)
+  if (APP_RS485_DEBUG_ONLY)
   {
     __HAL_RCC_GPIOA_CLK_ENABLE();
 
     HAL_GPIO_WritePin(PA0_LED_GPIO_Port, PA0_LED_Pin, PA0_LED_OFF);
+    HAL_GPIO_WritePin(RS485_DIR_GPIO_Port, RS485_DIR_Pin, RS485_DIR_RX);
 
-    GPIO_InitStruct.Pin = PA0_LED_Pin;
+    GPIO_InitStruct.Pin = PA0_LED_Pin | RS485_DIR_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
