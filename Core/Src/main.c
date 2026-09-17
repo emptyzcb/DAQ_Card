@@ -82,6 +82,7 @@ static void RS485_Debug_Send(const char *text)
 static void RS485_Debug_Run(void)
 {
   uint8_t led_state = 0U;
+  uint32_t last_led_toggle;
   uint32_t last_heartbeat;
 
   MX_GPIO_Init();
@@ -91,14 +92,20 @@ static void RS485_Debug_Run(void)
 
   MX_USART1_UART_Init();
   RS485_SetDirection(RS485_DIR_RX);
+  last_led_toggle = HAL_GetTick();
   last_heartbeat = HAL_GetTick();
 
   for (;;)
   {
-    if ((HAL_GetTick() - last_heartbeat) >= 1000U)
+    if ((HAL_GetTick() - last_led_toggle) >= 200U)
     {
       led_state = (uint8_t)!led_state;
       PA0_LED_Write(led_state ? PA0_LED_ON : PA0_LED_OFF);
+      last_led_toggle = HAL_GetTick();
+    }
+
+    if ((HAL_GetTick() - last_heartbeat) >= 1000U)
+    {
       RS485_Debug_Send(led_state ? "RS485 heartbeat: LED=ON\r\n"
                                   : "RS485 heartbeat: LED=OFF\r\n");
       last_heartbeat = HAL_GetTick();
