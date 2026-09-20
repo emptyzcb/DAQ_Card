@@ -2,288 +2,197 @@
 
 #include <string.h>
 
-#define RS485_UART_RX_RING_MASK (RS485_UART_RX_RING_SIZE - 1U)
-
-#if ((RS485_UART_RX_RING_SIZE & RS485_UART_RX_RING_MASK) != 0U)
-#error "RS485_UART_RX_RING_SIZE must be a power of 2"
-#endif
+#include "main.h"
+#include "usart.h"
 
 typedef struct
 {
-  volatile uint16_t head;
-  volatile uint16_t tail;
-  uint8_t buffer[RS485_UART_RX_RING_SIZE];
-} RS485_UART_RingBuffer;
+  volatile uint8_t head;
+  volatile uint8_t tail;
+  volatile uint16_t length[RS485_UART_FRAME_QUEUE_SIZE];
+  uint8_t data[RS485_UART_FRAME_QUEUE_SIZE][RS485_UART_FRAME_MAX_SIZE];
+  volatile uint32_t dropped;
+} RS485_UART_FrameQueue;
 
-static RS485_UART_RingBuffer rs485_rx_ring;
-#if defined(__CC_ARM)
-__align(32) static uint8_t rs485_dma_rx_buf[RS485_UART_DMA_RX_BUF_SIZE] __attribute__((at(0x24070000)));
-#elif defined(__ARMCC_VERSION)
-__attribute__((aligned(32), section(".ARM.__at_0x24070000"))) static uint8_t rs485_dma_rx_buf[RS485_UART_DMA_RX_BUF_SIZE];
-#else
-__attribute__((aligned(32))) static uint8_t rs485_dma_rx_buf[RS485_UART_DMA_RX_BUF_SIZE];
+static RS485_UART_FrameQueue rs485_rx_queue;
+static uint8_t rs485_rx_work_buffer[RS485_UART_FRAME_MAX_SIZE];
+
+#if RS485_COMM_LED_DIAGNOSTIC
+typedef enum
+{
+  RS485_DIAG_NO_FRAME = 0U,
+  RS485_DIAG_VALID_FRAME,
+  RS485_DIAG_INVALID_FRAME
+} RS485_DiagnosticState;
+
+static volatile RS485_DiagnosticState rs485_diag_state = RS485_DIAG_NO_FRAME;
+static volatile uint32_t rs485_diag_last_frame_tick;
+#define RS485_DIAG_NO_DATA_TIMEOUT_MS 1500U
+#define RS485_DIAG_BLINK_INTERVAL_MS  200U
 #endif
-static volatile uint16_t rs485_dma_last_pos;
-static volatile uint32_t rs485_rx_dropped;
-static volatile uint32_t rs485_rx_half_irq_count;
-static volatile uint32_t rs485_rx_full_irq_count;
-static volatile uint32_t rs485_rx_idle_irq_count;
 
-static void ring_reset(RS485_UART_RingBuffer *ring)
+static void rs485_set_direction(GPIO_PinState state)
 {
-  ring->head = 0U;
-  ring->tail = 0U;
+  HAL_GPIO_WritePin(RS485_DIR_GPIO_Port, RS485_DIR_Pin, state);
 }
 
-static uint16_t ring_used(const RS485_UART_RingBuffer *ring)
+static uint8_t rs485_queue_next(uint8_t index)
 {
-  return (uint16_t)((ring->tail - ring->head) & RS485_UART_RX_RING_MASK);
-}
-
-static uint16_t ring_free(const RS485_UART_RingBuffer *ring)
-{
-  return (uint16_t)((RS485_UART_RX_RING_SIZE - 1U) - ring_used(ring));
-}
-
-static uint16_t ring_write(RS485_UART_RingBuffer *ring, const uint8_t *src, uint16_t len)
-{
-  uint16_t free_len;
-  uint16_t first;
-
-  if ((ring == 0) || (src == 0) || (len == 0U))
+  index++;
+  if (index >= RS485_UART_FRAME_QUEUE_SIZE)
   {
-    return 0U;
+    index = 0U;
   }
 
-  free_len = ring_free(ring);
-  if (len > free_len)
-  {
-    len = free_len;
-  }
-
-  first = (uint16_t)(RS485_UART_RX_RING_SIZE - ring->tail);
-  if (first > len)
-  {
-    first = len;
-  }
-
-  memcpy(&ring->buffer[ring->tail], src, first);
-  if (first < len)
-  {
-    memcpy(&ring->buffer[0], src + first, (uint16_t)(len - first));
-  }
-
-  ring->tail = (uint16_t)((ring->tail + len) & RS485_UART_RX_RING_MASK);
-  return len;
-}
-
-static uint16_t ring_read(RS485_UART_RingBuffer *ring, uint8_t *dst, uint16_t len)
-{
-  uint16_t used_len;
-  uint16_t first;
-
-  if ((ring == 0) || (dst == 0) || (len == 0U))
-  {
-    return 0U;
-  }
-
-  used_len = ring_used(ring);
-  if (len > used_len)
-  {
-    len = used_len;
-  }
-
-  first = (uint16_t)(RS485_UART_RX_RING_SIZE - ring->head);
-  if (first > len)
-  {
-    first = len;
-  }
-
-  memcpy(dst, &ring->buffer[ring->head], first);
-  if (first < len)
-  {
-    memcpy(dst + first, &ring->buffer[0], (uint16_t)(len - first));
-  }
-
-  ring->head = (uint16_t)((ring->head + len) & RS485_UART_RX_RING_MASK);
-  return len;
-}
-
-static void RS485_UART_PumpRxFromDmaISR(void)
-{
-  uint16_t pos;
-  uint16_t last;
-
-  if (huart3.hdmarx == 0)
-  {
-    return;
-  }
-
-  pos = (uint16_t)(RS485_UART_DMA_RX_BUF_SIZE - __HAL_DMA_GET_COUNTER(huart3.hdmarx));
-  last = rs485_dma_last_pos;
-
-  if (pos == last)
-  {
-    return;
-  }
-
-  if (pos > last)
-  {
-    uint16_t len = (uint16_t)(pos - last);
-    uint16_t written = ring_write(&rs485_rx_ring, &rs485_dma_rx_buf[last], len);
-    rs485_rx_dropped += (uint32_t)(len - written);
-  }
-  else
-  {
-    uint16_t first = (uint16_t)(RS485_UART_DMA_RX_BUF_SIZE - last);
-    uint16_t written1 = ring_write(&rs485_rx_ring, &rs485_dma_rx_buf[last], first);
-    uint16_t second = pos;
-    uint16_t written2 = ring_write(&rs485_rx_ring, &rs485_dma_rx_buf[0], second);
-
-    rs485_rx_dropped += (uint32_t)(first - written1);
-    rs485_rx_dropped += (uint32_t)(second - written2);
-  }
-
-  rs485_dma_last_pos = pos;
+  return index;
 }
 
 void RS485_UART_Init(void)
 {
-  ring_reset(&rs485_rx_ring);
-  rs485_dma_last_pos = 0U;
-  rs485_rx_dropped = 0U;
-  rs485_rx_half_irq_count = 0U;
-  rs485_rx_full_irq_count = 0U;
-  rs485_rx_idle_irq_count = 0U;
+  memset(&rs485_rx_queue, 0, sizeof(rs485_rx_queue));
+  rs485_set_direction(RS485_DIR_RX);
 
-  if (HAL_UART_Receive_DMA(&huart3, rs485_dma_rx_buf, RS485_UART_DMA_RX_BUF_SIZE) != HAL_OK)
+  if (HAL_UARTEx_ReceiveToIdle_IT(&huart1,
+                                  rs485_rx_work_buffer,
+                                  RS485_UART_FRAME_MAX_SIZE) != HAL_OK)
   {
-    return;
+    Error_Handler();
   }
-
-  __HAL_UART_ENABLE_IT(&huart3, UART_IT_IDLE);
 }
 
-void RS485_UART_PumpRxFromDma(void)
+int RS485_UART_TryReceiveFrame(uint8_t *dst, uint16_t capacity, uint16_t *length)
 {
-  if (huart3.hdmarx == 0)
+  uint8_t head;
+  uint16_t frame_length;
+
+  if ((dst == 0) || (length == 0))
   {
-    return;
+    return -1;
   }
 
-  HAL_NVIC_DisableIRQ(DMA1_Stream0_IRQn);
-  HAL_NVIC_DisableIRQ(USART3_IRQn);
-  RS485_UART_PumpRxFromDmaISR();
-  HAL_NVIC_EnableIRQ(USART3_IRQn);
-  HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
-}
-
-void RS485_UART_IdleIRQHandler(void)
-{
-  rs485_rx_idle_irq_count++;
-  RS485_UART_PumpRxFromDmaISR();
-}
-
-void RS485_UART_Flush(void)
-{
-  if (huart3.hdmarx == 0)
+  head = rs485_rx_queue.head;
+  if (head == rs485_rx_queue.tail)
   {
-    ring_reset(&rs485_rx_ring);
-    rs485_dma_last_pos = 0U;
-    return;
+    return 0;
   }
 
-  HAL_NVIC_DisableIRQ(DMA1_Stream0_IRQn);
-  HAL_NVIC_DisableIRQ(USART3_IRQn);
-  rs485_dma_last_pos = (uint16_t)(RS485_UART_DMA_RX_BUF_SIZE - __HAL_DMA_GET_COUNTER(huart3.hdmarx));
-  ring_reset(&rs485_rx_ring);
-  HAL_NVIC_EnableIRQ(USART3_IRQn);
-  HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
-}
-
-uint16_t RS485_UART_Available(void)
-{
-  return ring_used(&rs485_rx_ring);
-}
-
-uint16_t RS485_UART_Read(uint8_t *dst, uint16_t len)
-{
-  return ring_read(&rs485_rx_ring, dst, len);
-}
-
-uint16_t RS485_UART_ReadClaim(uint8_t **pptr)
-{
-  uint16_t used;
-  uint16_t first;
-
-  if (pptr == 0)
+  frame_length = rs485_rx_queue.length[head];
+  if (capacity < frame_length)
   {
-    return 0U;
+    return -1;
   }
 
-  used = ring_used(&rs485_rx_ring);
-  if (used == 0U)
-  {
-    *pptr = 0;
-    return 0U;
-  }
-
-  first = (uint16_t)(RS485_UART_RX_RING_SIZE - rs485_rx_ring.head);
-  if (first > used)
-  {
-    first = used;
-  }
-
-  *pptr = &rs485_rx_ring.buffer[rs485_rx_ring.head];
-  return first;
+  memcpy(dst, rs485_rx_queue.data[head], frame_length);
+  *length = frame_length;
+  rs485_rx_queue.head = rs485_queue_next(head);
+  return 1;
 }
 
-void RS485_UART_ReadCommit(uint16_t len)
+int RS485_UART_Send(const uint8_t *data, uint16_t length, uint32_t timeout_ms)
 {
-  uint16_t used = ring_used(&rs485_rx_ring);
+  HAL_StatusTypeDef status;
 
-  if (len > used)
+  if ((data == 0) || (length == 0U))
   {
-    len = used;
+    return 0;
   }
 
-  rs485_rx_ring.head = (uint16_t)((rs485_rx_ring.head + len) & RS485_UART_RX_RING_MASK);
+  /* Keep the verified hardware direction sequence unchanged. */
+  rs485_set_direction(RS485_DIR_TX);
+  status = HAL_UART_Transmit(&huart1, (uint8_t *)data, length, timeout_ms);
+  rs485_set_direction(RS485_DIR_RX);
+
+  return (status == HAL_OK) ? 1 : 0;
 }
 
 uint32_t RS485_UART_RxDropped(void)
 {
-  return rs485_rx_dropped;
+  return rs485_rx_queue.dropped;
 }
 
-uint32_t RS485_UART_RxHalfIrqCount(void)
+void RS485_UART_DiagnosticMarkFrame(uint8_t valid)
 {
-  return rs485_rx_half_irq_count;
+#if RS485_COMM_LED_DIAGNOSTIC
+  rs485_diag_last_frame_tick = HAL_GetTick();
+  rs485_diag_state = (valid != 0U) ? RS485_DIAG_VALID_FRAME : RS485_DIAG_INVALID_FRAME;
+#else
+  (void)valid;
+#endif
 }
 
-uint32_t RS485_UART_RxFullIrqCount(void)
+void RS485_UART_DiagnosticProcess(void)
 {
-  return rs485_rx_full_irq_count;
-}
+#if RS485_COMM_LED_DIAGNOSTIC
+  uint32_t now = HAL_GetTick();
 
-uint32_t RS485_UART_RxIdleIrqCount(void)
-{
-  return rs485_rx_idle_irq_count;
-}
-
-void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
-{
-  if (huart->Instance == USART3)
+  if ((rs485_diag_last_frame_tick == 0U) ||
+      ((now - rs485_diag_last_frame_tick) >= RS485_DIAG_NO_DATA_TIMEOUT_MS))
   {
-    rs485_rx_half_irq_count++;
-    RS485_UART_PumpRxFromDmaISR();
+    rs485_diag_state = RS485_DIAG_NO_FRAME;
+  }
+
+  if (rs485_diag_state == RS485_DIAG_VALID_FRAME)
+  {
+    HAL_GPIO_WritePin(PA0_LED_GPIO_Port, PA0_LED_Pin, PA0_LED_ON);
+  }
+  else if (rs485_diag_state == RS485_DIAG_INVALID_FRAME)
+  {
+    GPIO_PinState state = (((now / RS485_DIAG_BLINK_INTERVAL_MS) & 0x01U) != 0U)
+                              ? PA0_LED_ON
+                              : PA0_LED_OFF;
+    HAL_GPIO_WritePin(PA0_LED_GPIO_Port, PA0_LED_Pin, state);
+  }
+  else
+  {
+    HAL_GPIO_WritePin(PA0_LED_GPIO_Port, PA0_LED_Pin, PA0_LED_OFF);
+  }
+#endif
+}
+
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)
+{
+  uint8_t tail;
+  uint8_t next_tail;
+
+  if (huart != &huart1)
+  {
+    return;
+  }
+
+  if ((size > 0U) && (size <= RS485_UART_FRAME_MAX_SIZE))
+  {
+    tail = rs485_rx_queue.tail;
+    next_tail = rs485_queue_next(tail);
+
+    if (next_tail == rs485_rx_queue.head)
+    {
+      rs485_rx_queue.dropped++;
+    }
+    else
+    {
+      memcpy(rs485_rx_queue.data[tail], rs485_rx_work_buffer, size);
+      rs485_rx_queue.length[tail] = size;
+      __DMB();
+      rs485_rx_queue.tail = next_tail;
+    }
+  }
+
+  if (HAL_UARTEx_ReceiveToIdle_IT(&huart1,
+                                  rs485_rx_work_buffer,
+                                  RS485_UART_FRAME_MAX_SIZE) != HAL_OK)
+  {
+    rs485_rx_queue.dropped++;
   }
 }
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-  if (huart->Instance == USART3)
+  if (huart != &huart1)
   {
-    rs485_rx_full_irq_count++;
-    RS485_UART_PumpRxFromDmaISR();
+    return;
   }
+
+  (void)HAL_UARTEx_ReceiveToIdle_IT(&huart1,
+                                    rs485_rx_work_buffer,
+                                    RS485_UART_FRAME_MAX_SIZE);
 }

@@ -4,6 +4,11 @@ MDK-ARM/F430VI/
 **/Listings/
 **/RTE/
 
+# .NET host build outputs
+Host/**/bin/
+Host/**/obj/
+Host/**/publish/
+
 # Large unused CMSIS DSP package
 Drivers/CMSIS/DSP/
 

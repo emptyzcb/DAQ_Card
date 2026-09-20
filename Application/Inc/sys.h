@@ -23,6 +23,7 @@ extern "C" {
 #include "ALL_Task.h"
 #include "Task_att_est.h"
 #include "Task_digital_io.h"
+#include "Task_modbus_rtu.h"
 #include "platform.h"
 
 #include "board_pins.h"
@@ -41,6 +42,8 @@ extern "C" {
 #include "imu_service.h"
 #include "led_blink.h"
 #include "rs485_uart.h"
+#include "modbus_rtu.h"
+#include "modbus_register_map.h"
 #include "stream_protocol.h"
 
 #include "attitude_est.h"

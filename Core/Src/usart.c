@@ -45,10 +45,6 @@ UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
 
-/* USART3 RX DMA is disabled in RS485 debug-only mode, but other compiled modules
-   still reference the handle symbol. Keep the definition available for link. */
-DMA_HandleTypeDef hdma_usart3_rx;
-
 /* USART1 RS485 init function */
 
 void MX_USART1_UART_Init(void)
@@ -63,7 +59,15 @@ void MX_USART1_UART_Init(void)
   huart1.Init.OverSampling = UART_OVERSAMPLING_16;
   huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
   huart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
-  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  /* PA9/PA10 的 USART1 复用是 STM32 固定不可换的（PA9=USART1_TX, PA10=USART1_RX）。
+     原理图 RS485 接线：PA9 -> 485_USART1_RX -> TD541S485H.RXD(接收器输出)
+                        PA10 -> 485_USART1_TX -> TD541S485H.TXD(驱动器输入)
+     使能 USART SWAP 后 TX/RX 信号互换：
+        USART1_TX 信号改从 PA10 引脚输出 -> TXD(驱动器输入) -> A/B 总线
+        总线 -> RXD(接收器输出) -> PA9 引脚输入 -> USART1_RX
+     从而让软件收发方向与硬件匹配，RS485 才能正常收发。 */
+  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_SWAP_INIT;
+  huart1.AdvancedInit.Swap = UART_ADVFEATURE_SWAP_ENABLE;
   if (HAL_UART_Init(&huart1) != HAL_OK)
   {
     Error_Handler();
@@ -188,9 +192,9 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     __HAL_RCC_USART1_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
 
-    /**USART1 GPIO Configuration
-    PA9     ------> USART1_TX
-    PA10    ------> USART1_RX
+    /**USART1 GPIO Configuration (STM32 fixed mux)
+    PA9     ------> USART1_TX pin, swapped to RX input (485_USART1_RX -> RXD)
+    PA10    ------> USART1_RX pin, swapped to TX output (485_USART1_TX -> TXD)
     */
     GPIO_InitStruct.Pin = GPIO_PIN_9|GPIO_PIN_10;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -198,6 +202,9 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF7_USART1;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    HAL_NVIC_SetPriority(USART1_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(USART1_IRQn);
   }
   else if(uartHandle->Instance==USART2)
   {
@@ -264,33 +271,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN USART3_MspInit 1 */
-#if !APP_RS485_DEBUG_ONLY
-    __HAL_RCC_DMA1_CLK_ENABLE();
-
-    hdma_usart3_rx.Instance = DMA1_Stream0;
-    hdma_usart3_rx.Init.Request = DMA_REQUEST_USART3_RX;
-    hdma_usart3_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
-    hdma_usart3_rx.Init.PeriphInc = DMA_PINC_DISABLE;
-    hdma_usart3_rx.Init.MemInc = DMA_MINC_ENABLE;
-    hdma_usart3_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-    hdma_usart3_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-    hdma_usart3_rx.Init.Mode = DMA_CIRCULAR;
-    hdma_usart3_rx.Init.Priority = DMA_PRIORITY_MEDIUM;
-    hdma_usart3_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-    if (HAL_DMA_Init(&hdma_usart3_rx) != HAL_OK)
-    {
-      Error_Handler();
-    }
-
-    __HAL_LINKDMA(uartHandle, hdmarx, hdma_usart3_rx);
-
-    HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
-
-    HAL_NVIC_SetPriority(USART3_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(USART3_IRQn);
-#endif
-
+  /* USART3 remains available for non-RS485 peripherals. */
   /* USER CODE END USART3_MspInit 1 */
   }
 }
@@ -302,6 +283,7 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
   {
     __HAL_RCC_USART1_CLK_DISABLE();
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_9|GPIO_PIN_10);
+    HAL_NVIC_DisableIRQ(USART1_IRQn);
   }
   else if(uartHandle->Instance==USART2)
   {
@@ -336,13 +318,7 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
     HAL_GPIO_DeInit(GPIOB, GPIO_PIN_10|GPIO_PIN_11);
 
   /* USER CODE BEGIN USART3_MspDeInit 1 */
-#if !APP_RS485_DEBUG_ONLY
-    HAL_DMA_DeInit(uartHandle->hdmarx);
-
-    HAL_NVIC_DisableIRQ(DMA1_Stream0_IRQn);
-    HAL_NVIC_DisableIRQ(USART3_IRQn);
-#endif
-
+  /* USART3 has no RS485 DMA dependency in the Modbus build. */
   /* USER CODE END USART3_MspDeInit 1 */
   }
 }

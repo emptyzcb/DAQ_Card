@@ -61,7 +61,22 @@ void Error_Handler(void);
 #define RS485_DE_RE_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
-#define APP_RS485_DEBUG_ONLY 1U
+#define APP_RS485_DEBUG_ONLY 0U
+
+/* Temporary TX-only test. Set both test switches to 0 to restore Modbus. */
+#define APP_RS485_TX_LOG_ONLY 0U
+
+/* Temporary RX-only LED test. Any received frame turns PA0 on. */
+#define APP_RS485_RX_LED_ONLY 0U
+
+/* Minimal Modbus test: skip sensors/CAN and run only USART1 + Modbus. */
+#define APP_RS485_MINIMAL_MODBUS_ONLY 1U
+
+/* Set to 0 after the PC communication test to expose live sensor data. */
+#define MODBUS_REGISTER_TEST_MODE 1U
+
+/* PA0 communication diagnostic: off=no frame, on=valid frame, blink=bad frame. */
+#define RS485_COMM_LED_DIAGNOSTIC 1U
 
 #define PA0_LED_Pin GPIO_PIN_0
 #define PA0_LED_GPIO_Port GPIOA

@@ -72,6 +72,10 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(RS485_DE_RE_GPIO_Port, RS485_DE_RE_Pin, GPIO_PIN_RESET);
 
+  /* Keep the verified USART1 RS485 direction path idle in receive mode. */
+  HAL_GPIO_WritePin(PA0_LED_GPIO_Port, PA0_LED_Pin, PA0_LED_OFF);
+  HAL_GPIO_WritePin(RS485_DIR_GPIO_Port, RS485_DIR_Pin, RS485_DIR_RX);
+
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_9, GPIO_PIN_SET);
 
@@ -84,6 +88,13 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(RS485_DE_RE_GPIO_Port, &GPIO_InitStruct);
+
+  /* Configure the verified USART1 RS485 direction and PA0 LED pins. */
+  GPIO_InitStruct.Pin = PA0_LED_Pin | RS485_DIR_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PD9 */
   GPIO_InitStruct.Pin = GPIO_PIN_9;

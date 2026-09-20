@@ -23,11 +23,14 @@
 #include "spi.h"
 #include "usart.h"
 #include "gpio.h"
-
-#include <string.h>
+#include "rs485_uart.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "Task_modbus_rtu.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
 
 /* USER CODE END Includes */
 
@@ -56,64 +59,83 @@
 void SystemClock_Config(void);
 static void MPU_Config(void);
 void MX_FREERTOS_Init(void);
-/* USER CODE BEGIN PFP */
 
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
-static void PA0_LED_Write(GPIO_PinState state)
+#if APP_RS485_TX_LOG_ONLY
+static void RS485_TxLog_Test_Run(void)
 {
-  HAL_GPIO_WritePin(PA0_LED_GPIO_Port, PA0_LED_Pin, state);
-}
-
-static void RS485_SetDirection(GPIO_PinState state)
-{
-  HAL_GPIO_WritePin(RS485_DIR_GPIO_Port, RS485_DIR_Pin, state);
-}
-
-static void RS485_Debug_Send(const char *text)
-{
-  RS485_SetDirection(RS485_DIR_TX);
-  HAL_UART_Transmit(&huart1, (uint8_t *)text, (uint16_t)strlen(text), 1000U);
-  RS485_SetDirection(RS485_DIR_RX);
-}
-
-static void RS485_Debug_Run(void)
-{
-  uint8_t led_state = 0U;
-  uint32_t last_led_toggle;
-  uint32_t last_heartbeat;
-
-  MX_GPIO_Init();
-
-  /* Run the application from the installed 25 MHz HSE. */
-  SystemClock_Config();
-
-  MX_USART1_UART_Init();
-  RS485_SetDirection(RS485_DIR_RX);
-  last_led_toggle = HAL_GetTick();
-  last_heartbeat = HAL_GetTick();
+  static const uint8_t message[] = "RS485 TX TEST: USART1 link alive\r\n";
 
   for (;;)
   {
-    if ((HAL_GetTick() - last_led_toggle) >= 200U)
-    {
-      led_state = (uint8_t)!led_state;
-      PA0_LED_Write(led_state ? PA0_LED_ON : PA0_LED_OFF);
-      last_led_toggle = HAL_GetTick();
-    }
-
-    if ((HAL_GetTick() - last_heartbeat) >= 1000U)
-    {
-      RS485_Debug_Send(led_state ? "RS485 heartbeat: LED=ON\r\n"
-                                  : "RS485 heartbeat: LED=OFF\r\n");
-      last_heartbeat = HAL_GetTick();
-    }
+    HAL_GPIO_WritePin(RS485_DIR_GPIO_Port, RS485_DIR_Pin, RS485_DIR_TX);
+    (void)HAL_UART_Transmit(&huart1,
+                            (uint8_t *)message,
+                            (uint16_t)(sizeof(message) - 1U),
+                            1000U);
+    HAL_GPIO_WritePin(RS485_DIR_GPIO_Port, RS485_DIR_Pin, RS485_DIR_RX);
+    HAL_Delay(1000U);
   }
 }
+#endif
 
-/* USER CODE END 0 */
+#if APP_RS485_RX_LED_ONLY
+static void RS485_RxLed_Test_Run(void)
+{
+  uint8_t frame[RS485_UART_FRAME_MAX_SIZE];
+  uint16_t frame_length;
+  uint32_t last_rx_tick = 0U;
+
+  RS485_UART_Init();
+
+  for (;;)
+  {
+    uint32_t now = HAL_GetTick();
+
+    frame_length = 0U;
+    if (RS485_UART_TryReceiveFrame(frame,
+                                   (uint16_t)sizeof(frame),
+                                   &frame_length) > 0)
+    {
+      last_rx_tick = now;
+      HAL_GPIO_WritePin(PA0_LED_GPIO_Port, PA0_LED_Pin, PA0_LED_ON);
+    }
+
+    if ((last_rx_tick == 0U) || ((now - last_rx_tick) >= 1500U))
+    {
+      HAL_GPIO_WritePin(PA0_LED_GPIO_Port, PA0_LED_Pin, PA0_LED_OFF);
+    }
+
+    HAL_Delay(1U);
+  }
+}
+#endif
+
+#if APP_RS485_MINIMAL_MODBUS_ONLY
+static void RS485_MinimalModbus_Test_Run(void)
+{
+  osKernelInitialize();
+  RS485_UART_Init();
+
+  if (xTaskCreate(Task_modbus_rtu,
+                  "Task_modbus_rtu",
+                  512U,
+                  NULL,
+                  4U,
+                  NULL) != pdPASS)
+  {
+    Error_Handler();
+  }
+
+  osKernelStart();
+
+  for (;;)
+  {
+  }
+}
+#endif
+/* USER CODE BEGIN PFP */
+
+/* USER CODE END PFP */
 
 /**
   * @brief  The application entry point.
@@ -138,9 +160,6 @@ int main(void)
 
   /* USER CODE END Init */
 
-#if APP_RS485_DEBUG_ONLY
-  RS485_Debug_Run();
-#else
   /* Configure the system clock */
   SystemClock_Config();
 
@@ -148,10 +167,25 @@ int main(void)
 
   /* USER CODE END SysInit */
 
+  /* Initialize only USART1 for the temporary RS485 path test. */
+#if APP_RS485_TX_LOG_ONLY
+  MX_GPIO_Init();
+  MX_USART1_UART_Init();
+  RS485_TxLog_Test_Run();
+#elif APP_RS485_RX_LED_ONLY
+  MX_GPIO_Init();
+  MX_USART1_UART_Init();
+  RS485_RxLed_Test_Run();
+#elif APP_RS485_MINIMAL_MODBUS_ONLY
+  MX_GPIO_Init();
+  MX_USART1_UART_Init();
+  RS485_MinimalModbus_Test_Run();
+#else
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI1_Init();
   MX_USART2_UART_Init();
+  MX_USART1_UART_Init();  /* RS485: keep enabled in normal mode too (TX/RX swapped) */
   MX_USART3_UART_Init();
   MX_FDCAN1_Init();
   /* USER CODE BEGIN 2 */
@@ -174,7 +208,7 @@ int main(void)
 
     /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+  /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
 #endif
