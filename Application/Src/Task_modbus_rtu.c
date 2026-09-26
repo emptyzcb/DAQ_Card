@@ -30,6 +30,10 @@ void Task_modbus_rtu(void *arg)
         (void)RS485_UART_Send(response, response_length, 100U);
       }
     }
+    else if (receive_result < 0)
+    {
+      RS485_UART_DiagnosticMarkFrame(0U);
+    }
 
     RS485_UART_DiagnosticProcess();
     vTaskDelay(pdMS_TO_TICKS(1U));

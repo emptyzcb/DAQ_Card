@@ -27,6 +27,10 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "Task_modbus_rtu.h"
+#include "Task_io_logic.h"
+#include "digital_io_service.h"
+#include "bsp_digital_io.h"
+#include "io_config_storage.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -115,12 +119,25 @@ static void RS485_MinimalModbus_Test_Run(void)
 {
   osKernelInitialize();
   RS485_UART_Init();
+  DIGITAL_IO_SERVICE_Init();
+  DIGITAL_IO_SERVICE_AllOutputsOff();
+  IO_CONFIG_Init();
 
   if (xTaskCreate(Task_modbus_rtu,
                   "Task_modbus_rtu",
                   512U,
                   NULL,
                   4U,
+                  NULL) != pdPASS)
+  {
+    Error_Handler();
+  }
+
+  if (xTaskCreate(Task_io_logic,
+                  "Task_io_logic",
+                  512U,
+                  NULL,
+                  3U,
                   NULL) != pdPASS)
   {
     Error_Handler();
@@ -188,6 +205,9 @@ int main(void)
   MX_USART1_UART_Init();  /* RS485: keep enabled in normal mode too (TX/RX swapped) */
   MX_USART3_UART_Init();
   MX_FDCAN1_Init();
+  DIGITAL_IO_SERVICE_Init();
+  DIGITAL_IO_SERVICE_AllOutputsOff();
+  IO_CONFIG_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */

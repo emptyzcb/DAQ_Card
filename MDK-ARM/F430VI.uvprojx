@@ -274,7 +274,7 @@
               <OCR_RVCT4>
                 <Type>1</Type>
                 <StartAddress>0x8000000</StartAddress>
-                <Size>0x200000</Size>
+                <Size>0x1c0000</Size>
               </OCR_RVCT4>
               <OCR_RVCT5>
                 <Type>1</Type>
@@ -591,6 +591,16 @@
               <FilePath>..\Application\Inc\Task_modbus_rtu.h</FilePath>
             </File>
             <File>
+              <FileName>Task_io_logic.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Application\Src\Task_io_logic.c</FilePath>
+            </File>
+            <File>
+              <FileName>Task_io_logic.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Application\Inc\Task_io_logic.h</FilePath>
+            </File>
+            <File>
               <FileName>sys.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Application/Src/sys.c</FilePath>
@@ -749,6 +759,36 @@
               <FileName>digital_io_service.h</FileName>
               <FileType>5</FileType>
               <FilePath>../Services/Inc/digital_io_service.h</FilePath>
+            </File>
+            <File>
+              <FileName>io_config_storage.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Services/Src/io_config_storage.c</FilePath>
+            </File>
+            <File>
+              <FileName>io_config_storage.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../Services/Inc/io_config_storage.h</FilePath>
+            </File>
+            <File>
+              <FileName>io_logic_engine.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Services/Src/io_logic_engine.c</FilePath>
+            </File>
+            <File>
+              <FileName>io_logic_engine.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../Services/Inc/io_logic_engine.h</FilePath>
+            </File>
+            <File>
+              <FileName>io_logic_protocol.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Services/Src/io_logic_protocol.c</FilePath>
+            </File>
+            <File>
+              <FileName>io_logic_protocol.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../Services/Inc/io_logic_protocol.h</FilePath>
             </File>
           </Files>
         </Group>

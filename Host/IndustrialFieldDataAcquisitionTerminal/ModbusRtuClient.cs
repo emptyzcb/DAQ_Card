@@ -122,6 +122,100 @@ internal sealed class ModbusRtuClient : IDisposable
         }
     }
 
+    public byte[] TransactCustom(byte function,
+                                 byte command,
+                                 ReadOnlySpan<byte> payload,
+                                 int expectedResponseLength,
+                                 int? responseTimeoutMs = null)
+    {
+        if (expectedResponseLength < 5 || expectedResponseLength > 256)
+        {
+            throw new ArgumentOutOfRangeException(nameof(expectedResponseLength));
+        }
+
+        lock (sync)
+        {
+            var port = serialPort;
+            if (port is null || !port.IsOpen)
+            {
+                throw new InvalidOperationException("串口尚未打开。");
+            }
+
+            var request = new byte[3 + payload.Length + 2];
+            request[0] = SlaveAddress;
+            request[1] = function;
+            request[2] = command;
+            payload.CopyTo(request.AsSpan(3));
+            AppendCrc(request);
+            port.ReadTimeout = responseTimeoutMs ?? ReadTimeoutMs;
+            port.WriteTimeout = ReadTimeoutMs;
+            port.DiscardInBuffer();
+            port.Write(request, 0, request.Length);
+            Log($"TX  {ToHex(request)}");
+
+            var header = ReadExact(port, 3);
+            if (header[0] != SlaveAddress)
+            {
+                throw new ModbusException($"IOCF 响应地址错误：0x{header[0]:X2}。");
+            }
+
+            if (header[1] != (byte)(function | 0x80))
+            {
+                // IOCF 错误响应是固定的 [addr, func, cmd, status, crc16]；
+                // 成功响应才按照命令对应的固定长度继续读取。
+                var status = ReadExact(port, 1)[0];
+                var responseLength = status == 0 ? expectedResponseLength : 6;
+                var response = new byte[responseLength];
+                header.CopyTo(response, 0);
+                response[3] = status;
+                var remaining = ReadExact(port, responseLength - 4);
+                remaining.CopyTo(response, 4);
+                Log($"RX  {ToHex(response)}");
+
+                if (!CheckCrc(response))
+                {
+                    throw new ModbusException("IOCF 响应 CRC 校验失败。");
+                }
+
+                if (response[3] != 0)
+                {
+                    throw new ModbusException($"MCU 返回 IOCF 错误：命令=0x{response[2]:X2}，错误码=0x{response[3]:X2}。");
+                }
+
+                if (response[1] != function)
+                {
+                    throw new ModbusException($"IOCF 响应功能码错误：0x{response[1]:X2}。");
+                }
+
+                return response;
+            }
+
+            var exceptionResponseLength = 5;
+            var exceptionResponse = new byte[exceptionResponseLength];
+            header.CopyTo(exceptionResponse, 0);
+            var exceptionRemaining = ReadExact(port, exceptionResponseLength - header.Length);
+            exceptionRemaining.CopyTo(exceptionResponse, header.Length);
+            Log($"RX  {ToHex(exceptionResponse)}");
+
+            if (!CheckCrc(exceptionResponse))
+            {
+                throw new ModbusException("IOCF 响应 CRC 校验失败。");
+            }
+
+            if (exceptionResponse[1] == (byte)(function | 0x80))
+            {
+                throw new ModbusException($"MCU 返回 IOCF 异常：错误码=0x{exceptionResponse[2]:X2}。");
+            }
+
+            if (exceptionResponse[1] != function)
+            {
+                throw new ModbusException($"IOCF 响应功能码错误：0x{exceptionResponse[1]:X2}。");
+            }
+
+            return exceptionResponse;
+        }
+    }
+
     private byte[] Transact(byte[] request, byte function)
     {
         lock (sync)

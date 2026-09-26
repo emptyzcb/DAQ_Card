@@ -13,4 +13,7 @@
   <ItemGroup>
     <PackageReference Include="System.IO.Ports" Version="9.0.0" />
   </ItemGroup>
+  <ItemGroup>
+    <None Update="Library\io_logic_library.c" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+  </ItemGroup>
 </Project>

@@ -1,6 +1,7 @@
 #include "modbus_rtu.h"
 
 #include "modbus_register_map.h"
+#include "io_logic_protocol.h"
 
 #define MODBUS_RTU_EXCEPTION_ILLEGAL_FUNCTION 1U
 #define MODBUS_RTU_EXCEPTION_ILLEGAL_ADDRESS  2U
@@ -110,6 +111,27 @@ uint16_t MODBUS_RTU_HandleRequest(const uint8_t *request,
   if ((broadcast == 0U) && (address != MODBUS_RTU_DEFAULT_SLAVE_ADDRESS))
   {
     return 0U;
+  }
+
+  if (function == IO_LOGIC_PROTOCOL_FUNCTION)
+  {
+    if (broadcast != 0U)
+    {
+      return 0U;
+    }
+
+    response_payload_length = IO_LOGIC_PROTOCOL_Handle(address,
+                                                        &request[2],
+                                                        (uint16_t)(request_length - 4U),
+                                                        response,
+                                                        response_capacity);
+    if (response_payload_length == 0U)
+    {
+      return 0U;
+    }
+
+    modbus_append_crc(response, response_payload_length);
+    return (uint16_t)(response_payload_length + 2U);
   }
 
   if (function == 0x03U)

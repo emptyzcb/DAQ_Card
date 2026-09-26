@@ -24,6 +24,7 @@ extern "C" {
 #include "Task_att_est.h"
 #include "Task_digital_io.h"
 #include "Task_modbus_rtu.h"
+#include "Task_io_logic.h"
 #include "platform.h"
 
 #include "board_pins.h"
@@ -44,6 +45,9 @@ extern "C" {
 #include "rs485_uart.h"
 #include "modbus_rtu.h"
 #include "modbus_register_map.h"
+#include "io_config_storage.h"
+#include "io_logic_engine.h"
+#include "io_logic_protocol.h"
 #include "stream_protocol.h"
 
 #include "attitude_est.h"

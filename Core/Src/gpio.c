@@ -69,6 +69,23 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
+  /* Relay outputs are active-low: PD15, PD14, PE0 and PE1. */
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14 | GPIO_PIN_15, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_0 | GPIO_PIN_1, GPIO_PIN_SET);
+
+  GPIO_InitStruct.Pin = GPIO_PIN_14 | GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_1;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /* Energize all four relays for the current hardware test. */
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14 | GPIO_PIN_15, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_0 | GPIO_PIN_1, GPIO_PIN_RESET);
+
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(RS485_DE_RE_GPIO_Port, RS485_DE_RE_Pin, GPIO_PIN_RESET);
 
@@ -80,7 +97,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_9, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8|GPIO_PIN_10, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8 | GPIO_PIN_10, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : RS485_DE_RE_Pin */
   GPIO_InitStruct.Pin = RS485_DE_RE_Pin;
@@ -104,7 +121,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PA8 PA10 */
-  GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_10;
+  GPIO_InitStruct.Pin = GPIO_PIN_8 | GPIO_PIN_10;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;

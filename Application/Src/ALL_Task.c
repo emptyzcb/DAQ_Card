@@ -14,6 +14,10 @@ TaskHandle_t Task_modbus_rtu_Handler;
 configSTACK_DEPTH_TYPE DEPTH_TYPE_Task_modbus_rtu = 512;
 #define Task_modbus_rtu_Priority 4
 
+TaskHandle_t Task_io_logic_Handler;
+configSTACK_DEPTH_TYPE DEPTH_TYPE_Task_io_logic = 512;
+#define Task_io_logic_Priority 3
+
 TaskHandle_t Task_ad7606_Handler;
 configSTACK_DEPTH_TYPE DEPTH_TYPE_Task_ad7606 = 512;
 #define Task_ad7606_Priority 3
@@ -56,6 +60,14 @@ void TASKS_START(void *arg)
         NULL,
         Task_modbus_rtu_Priority,
         &Task_modbus_rtu_Handler);
+
+    xTaskCreate(
+        Task_io_logic,
+        "Task_io_logic",
+        DEPTH_TYPE_Task_io_logic,
+        NULL,
+        Task_io_logic_Priority,
+        &Task_io_logic_Handler);
 
     xTaskCreate(
         Task_ad7606,

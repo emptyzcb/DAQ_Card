@@ -86,32 +86,32 @@ Source: `采集卡电路原理图和引脚定义表.pdf`, page 2.
 
 | STM32H743 pin | Net |
 | --- | --- |
-| PA0 | `Relay_out1` |
-| PA1 | `Relay_out2` |
-| PA8 | `Relay_out3` |
-| PA11 | `Relay_out4` |
+| PD15 | `RELAY_1` |
+| PD14 | `RELAY_2` |
+| PE0 | `RELAY_3` |
+| PE1 | `RELAY_4` |
 
 ### Transistor Outputs
 
 | STM32H743 pin | Net |
 | --- | --- |
-| PD14 | `Transistor_OUT1` |
-| PD15 | `Transistor_OUT2` |
-| PE0 | `Transistor_OUT3` |
-| PE1 | `Transistor_OUT4` |
+| PA11 | `TRANSISTOR_1` |
+| PA8 | `TRANSISTOR_2` |
+| PC7 | `TRANSISTOR_3` |
+| PC6 | `TRANSISTOR_4` |
 
 ### Switch Inputs
 
 | STM32H743 pin | Net |
 | --- | --- |
-| PD10 | `X1` |
-| PA15 | `X2` |
-| PB0 | `X3` |
-| PB1 | `X4` |
-| PB7 | `X5` |
-| PC0 | `X6` |
-| PE8 | `X7` |
-| PE9 | `X8` |
+| PE9 | `INPUT_1` |
+| PB7 | `INPUT_2` |
+| PD10 | `INPUT_3` |
+| PA15 | `INPUT_4` |
+| PC0 | `INPUT_5` |
+| PB0 | `INPUT_6` |
+| PB1 | `INPUT_7` |
+| PE8 | `INPUT_8` |
 
 ### DO Control
 
@@ -141,12 +141,16 @@ Source: `采集卡电路原理图和引脚定义表.pdf`, page 2.
 
 ## Digital IO Bring-Up Notes
 
-- Input channels `X1` to `X8` are exposed through `BSP_DIGITAL_IO_Input`.
-- Output channels include four relay outputs, four transistor outputs, and
-  `DO_I_MCU` / `DO_U_MCU`.
+- The digital IO interface is strictly limited to eight inputs and eight
+  outputs. Input channels are named `INPUT_1` to `INPUT_8`.
+- Output channels are split into four relay outputs (`RELAY_1` to `RELAY_4`)
+  and four transistor outputs (`TRANSISTOR_1` to `TRANSISTOR_4`).
+- `DO_I_MCU` and `DO_U_MCU` are not part of this eight-output digital IO
+  interface.
 - Outputs are initialized to the inactive state.
 - Inputs default to active-low because the schematic uses isolated input
   conditioning. Override `BSP_DIGITAL_IO_INPUT_ACTIVE_LEVEL` if board testing
   proves a different polarity.
-- The current firmware creates `Task_digital_io`, which prints input and output
-  masks for smoke testing but does not automatically turn outputs on.
+- The current IO bring-up enables all four relay outputs and all four transistor
+  outputs, while `Task_digital_io` prints input and output masks for smoke
+  testing.

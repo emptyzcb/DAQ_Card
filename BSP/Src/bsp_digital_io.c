@@ -25,9 +25,19 @@ static const BSP_DIGITAL_IO_PinDef output_pins[BSP_DIGITAL_IO_OUTPUT_COUNT] = {
   { BOARD_TRANSISTOR_OUT1_GPIO_Port, BOARD_TRANSISTOR_OUT1_Pin },
   { BOARD_TRANSISTOR_OUT2_GPIO_Port, BOARD_TRANSISTOR_OUT2_Pin },
   { BOARD_TRANSISTOR_OUT3_GPIO_Port, BOARD_TRANSISTOR_OUT3_Pin },
-  { BOARD_TRANSISTOR_OUT4_GPIO_Port, BOARD_TRANSISTOR_OUT4_Pin },
-  { BOARD_DO_I_MCU_GPIO_Port, BOARD_DO_I_MCU_Pin },
-  { BOARD_DO_U_MCU_GPIO_Port, BOARD_DO_U_MCU_Pin }
+  { BOARD_TRANSISTOR_OUT4_GPIO_Port, BOARD_TRANSISTOR_OUT4_Pin }
+};
+
+/* The four relay drivers in the schematic are active-low. */
+static const GPIO_PinState output_active_levels[BSP_DIGITAL_IO_OUTPUT_COUNT] = {
+  GPIO_PIN_RESET,
+  GPIO_PIN_RESET,
+  GPIO_PIN_RESET,
+  GPIO_PIN_RESET,
+  GPIO_PIN_SET,
+  GPIO_PIN_SET,
+  GPIO_PIN_SET,
+  GPIO_PIN_SET
 };
 
 static uint16_t output_state_mask;
@@ -50,14 +60,14 @@ static void digital_io_gpio_clock_enable(GPIO_TypeDef *port)
 #endif
 }
 
-static GPIO_PinState output_active_to_pin_state(int active)
+static GPIO_PinState output_active_to_pin_state(BSP_DIGITAL_IO_Output output, int active)
 {
   if (active)
   {
-    return BSP_DIGITAL_IO_OUTPUT_ACTIVE_LEVEL;
+    return output_active_levels[output];
   }
 
-  return (BSP_DIGITAL_IO_OUTPUT_ACTIVE_LEVEL == GPIO_PIN_SET) ? GPIO_PIN_RESET : GPIO_PIN_SET;
+  return (output_active_levels[output] == GPIO_PIN_SET) ? GPIO_PIN_RESET : GPIO_PIN_SET;
 }
 
 static int is_valid_input(BSP_DIGITAL_IO_Input input)
@@ -79,7 +89,7 @@ void BSP_DIGITAL_IO_Init(void)
     digital_io_gpio_clock_enable(output_pins[index].port);
     HAL_GPIO_WritePin(output_pins[index].port,
                       output_pins[index].pin,
-                      output_active_to_pin_state(0));
+                      output_active_to_pin_state((BSP_DIGITAL_IO_Output)index, 0));
   }
 
   gpio.Mode = GPIO_MODE_OUTPUT_PP;
@@ -151,7 +161,7 @@ void BSP_DIGITAL_IO_SetOutput(BSP_DIGITAL_IO_Output output, int active)
   bit = (uint16_t)(1U << (uint32_t)output);
   HAL_GPIO_WritePin(output_pins[output].port,
                     output_pins[output].pin,
-                    output_active_to_pin_state(active));
+                    output_active_to_pin_state(output, active));
 
   if (active)
   {

@@ -105,42 +105,42 @@
 #define BOARD_W5500_INT_Pin                 GPIO_PIN_15
 
 /* Relay outputs */
-#define BOARD_RELAY_OUT1_GPIO_Port          GPIOA
-#define BOARD_RELAY_OUT1_Pin                GPIO_PIN_0
-#define BOARD_RELAY_OUT2_GPIO_Port          GPIOA
-#define BOARD_RELAY_OUT2_Pin                GPIO_PIN_1
-#define BOARD_RELAY_OUT3_GPIO_Port          GPIOA
-#define BOARD_RELAY_OUT3_Pin                GPIO_PIN_8
-#define BOARD_RELAY_OUT4_GPIO_Port          GPIOA
-#define BOARD_RELAY_OUT4_Pin                GPIO_PIN_11
+#define BOARD_RELAY_OUT1_GPIO_Port          GPIOD
+#define BOARD_RELAY_OUT1_Pin                GPIO_PIN_15
+#define BOARD_RELAY_OUT2_GPIO_Port          GPIOD
+#define BOARD_RELAY_OUT2_Pin                GPIO_PIN_14
+#define BOARD_RELAY_OUT3_GPIO_Port          GPIOE
+#define BOARD_RELAY_OUT3_Pin                GPIO_PIN_0
+#define BOARD_RELAY_OUT4_GPIO_Port          GPIOE
+#define BOARD_RELAY_OUT4_Pin                GPIO_PIN_1
 
 /* Transistor outputs */
-#define BOARD_TRANSISTOR_OUT1_GPIO_Port     GPIOD
-#define BOARD_TRANSISTOR_OUT1_Pin           GPIO_PIN_14
-#define BOARD_TRANSISTOR_OUT2_GPIO_Port     GPIOD
-#define BOARD_TRANSISTOR_OUT2_Pin           GPIO_PIN_15
-#define BOARD_TRANSISTOR_OUT3_GPIO_Port     GPIOE
-#define BOARD_TRANSISTOR_OUT3_Pin           GPIO_PIN_0
-#define BOARD_TRANSISTOR_OUT4_GPIO_Port     GPIOE
-#define BOARD_TRANSISTOR_OUT4_Pin           GPIO_PIN_1
+#define BOARD_TRANSISTOR_OUT1_GPIO_Port     GPIOA
+#define BOARD_TRANSISTOR_OUT1_Pin           GPIO_PIN_11
+#define BOARD_TRANSISTOR_OUT2_GPIO_Port     GPIOA
+#define BOARD_TRANSISTOR_OUT2_Pin           GPIO_PIN_8
+#define BOARD_TRANSISTOR_OUT3_GPIO_Port     GPIOC
+#define BOARD_TRANSISTOR_OUT3_Pin           GPIO_PIN_7
+#define BOARD_TRANSISTOR_OUT4_GPIO_Port     GPIOC
+#define BOARD_TRANSISTOR_OUT4_Pin           GPIO_PIN_6
 
 /* Switch inputs */
-#define BOARD_SWITCH_X1_GPIO_Port           GPIOD
-#define BOARD_SWITCH_X1_Pin                 GPIO_PIN_10
-#define BOARD_SWITCH_X2_GPIO_Port           GPIOA
-#define BOARD_SWITCH_X2_Pin                 GPIO_PIN_15
-#define BOARD_SWITCH_X3_GPIO_Port           GPIOB
-#define BOARD_SWITCH_X3_Pin                 GPIO_PIN_0
-#define BOARD_SWITCH_X4_GPIO_Port           GPIOB
-#define BOARD_SWITCH_X4_Pin                 GPIO_PIN_1
-#define BOARD_SWITCH_X5_GPIO_Port           GPIOB
-#define BOARD_SWITCH_X5_Pin                 GPIO_PIN_7
-#define BOARD_SWITCH_X6_GPIO_Port           GPIOC
+#define BOARD_SWITCH_X1_GPIO_Port           GPIOE
+#define BOARD_SWITCH_X1_Pin                 GPIO_PIN_9
+#define BOARD_SWITCH_X2_GPIO_Port           GPIOB
+#define BOARD_SWITCH_X2_Pin                 GPIO_PIN_7
+#define BOARD_SWITCH_X3_GPIO_Port           GPIOD
+#define BOARD_SWITCH_X3_Pin                 GPIO_PIN_10
+#define BOARD_SWITCH_X4_GPIO_Port           GPIOA
+#define BOARD_SWITCH_X4_Pin                 GPIO_PIN_15
+#define BOARD_SWITCH_X5_GPIO_Port           GPIOC
+#define BOARD_SWITCH_X5_Pin                 GPIO_PIN_0
+#define BOARD_SWITCH_X6_GPIO_Port           GPIOB
 #define BOARD_SWITCH_X6_Pin                 GPIO_PIN_0
-#define BOARD_SWITCH_X7_GPIO_Port           GPIOE
-#define BOARD_SWITCH_X7_Pin                 GPIO_PIN_8
+#define BOARD_SWITCH_X7_GPIO_Port           GPIOB
+#define BOARD_SWITCH_X7_Pin                 GPIO_PIN_1
 #define BOARD_SWITCH_X8_GPIO_Port           GPIOE
-#define BOARD_SWITCH_X8_Pin                 GPIO_PIN_9
+#define BOARD_SWITCH_X8_Pin                 GPIO_PIN_8
 
 /* Analog output control */
 #define BOARD_DO_I_MCU_GPIO_Port            GPIOA

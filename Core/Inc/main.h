@@ -72,7 +72,7 @@ void Error_Handler(void);
 /* Minimal Modbus test: skip sensors/CAN and run only USART1 + Modbus. */
 #define APP_RS485_MINIMAL_MODBUS_ONLY 1U
 
-/* Set to 0 after the PC communication test to expose live sensor data. */
+/* Keep deterministic test registers while the RS485 link is being verified. */
 #define MODBUS_REGISTER_TEST_MODE 1U
 
 /* PA0 communication diagnostic: off=no frame, on=valid frame, blink=bad frame. */
