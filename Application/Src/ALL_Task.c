@@ -1,11 +1,11 @@
 #include "sys.h"
-//Æô¶¯Ïß³Ì
+//ï¿½ï¿½ï¿½ï¿½ï¿½ß³ï¿½
 TaskHandle_t TASKS_START_Handler;
 configSTACK_DEPTH_TYPE DEPTH_TYPE_TASKS_START = 128;
 #define TASKS_START_Priority 10
 void TASKS_START(void *arg);
 
-//×ËÌ¬½âËã£ºAttitude_Estimation
+//ï¿½ï¿½Ì¬ï¿½ï¿½ï¿½ã£ºAttitude_Estimation
 TaskHandle_t Task_att_est_Handler;
 configSTACK_DEPTH_TYPE DEPTH_TYPE_Task_att_est = 1024;
 #define Task_att_est_Priority 3
@@ -28,6 +28,18 @@ TaskHandle_t Task_digital_io_Handler;
 configSTACK_DEPTH_TYPE DEPTH_TYPE_Task_digital_io = 256;
 #define Task_digital_io_Priority 2
 void Task_digital_io(void *arg);
+
+//Modbus RTU slave task (USART1 RS485)
+TaskHandle_t Task_modbus_Handler;
+configSTACK_DEPTH_TYPE DEPTH_TYPE_Task_modbus = 512;
+#define Task_modbus_Priority 4
+void Task_modbus(void *arg);
+
+//Script runner task (flash-stored script interpreter, scheme B)
+TaskHandle_t Task_script_Handler;
+configSTACK_DEPTH_TYPE DEPTH_TYPE_Task_script = 512;
+#define Task_script_Priority 2
+void Task_script(void *arg);
 
 void vMyFreeRTOS_Task_Start(void)
 {
@@ -78,6 +90,22 @@ void TASKS_START(void *arg)
         NULL,
         Task_digital_io_Priority,
         &Task_digital_io_Handler);
+
+    xTaskCreate(
+        Task_modbus,
+        "Task_modbus",
+        DEPTH_TYPE_Task_modbus,
+        NULL,
+        Task_modbus_Priority,
+        &Task_modbus_Handler);
+
+    xTaskCreate(
+        Task_script,
+        "Task_script",
+        DEPTH_TYPE_Task_script,
+        NULL,
+        Task_script_Priority,
+        &Task_script_Handler);
 
     xTaskResumeAll();
     vTaskDelete(NULL);
@@ -144,4 +172,27 @@ void Task_ad7606(void *arg)
         AD7606_SERVICE_Process();
         vTaskDelay(pdMS_TO_TICKS(1U));
     }
+}
+
+void Task_modbus(void *arg)
+{
+    (void)arg;
+
+    for (;;)
+    {
+        MODBUS_SLAVE_Pump();
+        MODBUS_SLAVE_Process();
+        vTaskDelay(pdMS_TO_TICKS(1U));
+    }
+}
+
+void Task_script(void *arg)
+{
+    (void)arg;
+
+    /* Interpret the script stored in flash; starts automatically at
+     * power-up when a valid script exists (scheme B). */
+    SCRIPT_RUNNER_Init();
+    SCRIPT_RUNNER_Start();
+    SCRIPT_RUNNER_Run();
 }

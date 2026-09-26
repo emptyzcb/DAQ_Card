@@ -61,7 +61,9 @@ void Error_Handler(void);
 #define RS485_DE_RE_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
-#define APP_RS485_DEBUG_ONLY 1U
+/* 0 = full FreeRTOS application (Modbus slave over USART1 RS485);
+   1 = RS485 debug-only heartbeat loop for bring-up. */
+#define APP_RS485_DEBUG_ONLY 0U
 
 #define PA0_LED_Pin GPIO_PIN_0
 #define PA0_LED_GPIO_Port GPIOA

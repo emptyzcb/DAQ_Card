@@ -40,7 +40,10 @@ extern "C" {
 #include "digital_io_service.h"
 #include "imu_service.h"
 #include "led_blink.h"
+#include "modbus_slave.h"
 #include "rs485_uart.h"
+#include "script_flash.h"
+#include "script_runner.h"
 #include "stream_protocol.h"
 
 #include "attitude_est.h"

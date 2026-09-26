@@ -246,7 +246,7 @@
               <IROM>
                 <Type>1</Type>
                 <StartAddress>0x8000000</StartAddress>
-                <Size>0x200000</Size>
+                <Size>0x1E0000</Size>
               </IROM>
               <XRAM>
                 <Type>0</Type>
@@ -271,7 +271,7 @@
               <OCR_RVCT4>
                 <Type>1</Type>
                 <StartAddress>0x8000000</StartAddress>
-                <Size>0x200000</Size>
+                <Size>0x1E0000</Size>
               </OCR_RVCT4>
               <OCR_RVCT5>
                 <Type>1</Type>
@@ -700,6 +700,41 @@
               <FileName>digital_io_service.h</FileName>
               <FileType>5</FileType>
               <FilePath>../Services/Inc/digital_io_service.h</FilePath>
+            </File>
+            <File>
+              <FileName>modbus_slave.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Services/Src/modbus_slave.c</FilePath>
+            </File>
+            <File>
+              <FileName>modbus_slave.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../Services/Inc/modbus_slave.h</FilePath>
+            </File>
+            <File>
+              <FileName>modbus_slave_irq.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Services/Src/modbus_slave_irq.c</FilePath>
+            </File>
+            <File>
+              <FileName>script_flash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Services/Src/script_flash.c</FilePath>
+            </File>
+            <File>
+              <FileName>script_flash.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../Services/Inc/script_flash.h</FilePath>
+            </File>
+            <File>
+              <FileName>script_runner.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Services/Src/script_runner.c</FilePath>
+            </File>
+            <File>
+              <FileName>script_runner.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../Services/Inc/script_runner.h</FilePath>
             </File>
           </Files>
         </Group>

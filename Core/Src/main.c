@@ -28,6 +28,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "modbus_slave.h"
 
 /* USER CODE END Includes */
 
@@ -151,9 +152,11 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI1_Init();
+  MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   MX_USART3_UART_Init();
   MX_FDCAN1_Init();
+  MODBUS_SLAVE_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
