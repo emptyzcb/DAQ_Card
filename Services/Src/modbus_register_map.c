@@ -3,6 +3,7 @@
 #include "main.h"
 #include "datahub.h"
 #include "digital_io_service.h"
+#include "ad7606_service.h"
 
 #if MODBUS_REGISTER_TEST_MODE
 static uint16_t modbus_test_output_mask;
@@ -89,6 +90,18 @@ int MODBUS_REGISTER_ReadHolding(uint16_t address, uint16_t *value)
       *value = modbus_test_output_mask;
 #else
       *value = DIGITAL_IO_SERVICE_GetOutputMask();
+#endif
+      return 1;
+
+    case 0x0003U:
+#if MODBUS_REGISTER_TEST_MODE
+      *value = (uint16_t)BSP_AD7606_TEST_PASS;
+#else
+      {
+        AD7606_SERVICE_Diagnostics diagnostics;
+        AD7606_SERVICE_GetDiagnostics(&diagnostics);
+        *value = (uint16_t)diagnostics.self_test;
+      }
 #endif
       return 1;
 

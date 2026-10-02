@@ -148,6 +148,30 @@
 #define BOARD_DO_U_MCU_GPIO_Port            GPIOA
 #define BOARD_DO_U_MCU_Pin                  GPIO_PIN_5
 
+/* AD7606, serial mode with CONVST A/B tied and two serial data outputs */
+#define BOARD_AD7606_OS0_GPIO_Port          GPIOD
+#define BOARD_AD7606_OS0_Pin                GPIO_PIN_4
+#define BOARD_AD7606_OS1_GPIO_Port          GPIOD
+#define BOARD_AD7606_OS1_Pin                GPIO_PIN_5
+#define BOARD_AD7606_OS2_GPIO_Port          GPIOD
+#define BOARD_AD7606_OS2_Pin                GPIO_PIN_6
+#define BOARD_AD7606_RANGE_GPIO_Port        GPIOD
+#define BOARD_AD7606_RANGE_Pin              GPIO_PIN_7
+#define BOARD_AD7606_CONVST_GPIO_Port       GPIOD
+#define BOARD_AD7606_CONVST_Pin             GPIO_PIN_8
+#define BOARD_AD7606_RESET_GPIO_Port        GPIOD
+#define BOARD_AD7606_RESET_Pin              GPIO_PIN_9
+#define BOARD_AD7606_SCLK_GPIO_Port         GPIOE
+#define BOARD_AD7606_SCLK_Pin               GPIO_PIN_3
+#define BOARD_AD7606_DOUTA_GPIO_Port        GPIOE
+#define BOARD_AD7606_DOUTA_Pin              GPIO_PIN_5
+#define BOARD_AD7606_DOUTB_GPIO_Port        GPIOE
+#define BOARD_AD7606_DOUTB_Pin              GPIO_PIN_4
+#define BOARD_AD7606_CS_GPIO_Port           GPIOE
+#define BOARD_AD7606_CS_Pin                 GPIO_PIN_6
+#define BOARD_AD7606_BUSY_GPIO_Port         GPIOE
+#define BOARD_AD7606_BUSY_Pin               GPIO_PIN_7
+
 /* ESP32-S3 link */
 #define BOARD_ESP32_RX_GPIO_Port            GPIOB
 #define BOARD_ESP32_RX_Pin                  GPIO_PIN_10

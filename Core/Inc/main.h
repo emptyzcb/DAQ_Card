@@ -63,6 +63,9 @@ void Error_Handler(void);
 /* USER CODE BEGIN Private defines */
 #define APP_RS485_DEBUG_ONLY 0U
 
+/* Standalone AD7606 hardware test: USART2 + AD7606 GPIO only. */
+#define APP_AD7606_DIAGNOSTIC_ONLY 1U
+
 /* Temporary TX-only test. Set both test switches to 0 to restore Modbus. */
 #define APP_RS485_TX_LOG_ONLY 0U
 
@@ -72,8 +75,8 @@ void Error_Handler(void);
 /* Minimal Modbus test: skip sensors/CAN and run only USART1 + Modbus. */
 #define APP_RS485_MINIMAL_MODBUS_ONLY 1U
 
-/* Keep deterministic test registers while the RS485 link is being verified. */
-#define MODBUS_REGISTER_TEST_MODE 1U
+/* Read live board state and AD7606 samples through Modbus. */
+#define MODBUS_REGISTER_TEST_MODE 0U
 
 /* PA0 communication diagnostic: off=no frame, on=valid frame, blink=bad frame. */
 #define RS485_COMM_LED_DIAGNOSTIC 1U
