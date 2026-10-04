@@ -28,7 +28,10 @@ static const BSP_DIGITAL_IO_PinDef output_pins[BSP_DIGITAL_IO_OUTPUT_COUNT] = {
   { BOARD_TRANSISTOR_OUT4_GPIO_Port, BOARD_TRANSISTOR_OUT4_Pin }
 };
 
-/* The four relay drivers in the schematic are active-low. */
+/*
+ * 这里描述的是板级电路的真实有效电平。上层只使用“打开/关闭”
+ * 逻辑语义，不应感知继电器低有效、晶体管高有效的硬件差异。
+ */
 static const GPIO_PinState output_active_levels[BSP_DIGITAL_IO_OUTPUT_COUNT] = {
   GPIO_PIN_RESET,
   GPIO_PIN_RESET,
@@ -84,6 +87,10 @@ void BSP_DIGITAL_IO_Init(void)
 {
   GPIO_InitTypeDef gpio = {0};
 
+  /*
+   * 先写入每路输出的关闭电平，再把引脚切换为输出模式。
+   * 这个顺序可避免上电初始化过程中继电器或晶体管瞬间误动作。
+   */
   for (uint32_t index = 0U; index < (uint32_t)BSP_DIGITAL_IO_OUTPUT_COUNT; index++)
   {
     digital_io_gpio_clock_enable(output_pins[index].port);
@@ -159,10 +166,12 @@ void BSP_DIGITAL_IO_SetOutput(BSP_DIGITAL_IO_Output output, int active)
   }
 
   bit = (uint16_t)(1U << (uint32_t)output);
+  /* 将统一的逻辑状态转换为该路硬件所需的真实高低电平。 */
   HAL_GPIO_WritePin(output_pins[output].port,
                     output_pins[output].pin,
                     output_active_to_pin_state(output, active));
 
+  /* 缓存的是逻辑打开状态，而不是GPIO引脚的物理电平。 */
   if (active)
   {
     output_state_mask |= bit;
