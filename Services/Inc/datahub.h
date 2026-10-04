@@ -61,6 +61,20 @@ typedef struct
 } DataHubAd7606Data;
 
 /*
+ * DataHubDigitalIoData
+ *
+ * 数字IO最新状态快照。输入和输出位掩码中的bit0~bit7分别
+ * 对应第1~8路，位为1表示该路处于有效/打开状态。
+ */
+typedef struct
+{
+    uint32_t seq;             /* 发布序号，每发布一次完整快照加1 */
+    uint32_t timestamp_ms;    /* 快照生成时的系统毫秒时间 */
+    uint16_t input_mask;      /* 8路数字输入有效状态 */
+    uint16_t output_mask;     /* 4路继电器和4路晶体管的打开状态 */
+} DataHubDigitalIoData;
+
+/*
  * DataHubState
  *
  * 全局数据中心。
@@ -70,6 +84,7 @@ typedef struct
 {
     DataHubImuData imu;      /* IMU/姿态最新快照 */
     DataHubAd7606Data ad7606; /* AD7606 latest sample snapshot */
+    DataHubDigitalIoData digital_io; /* 数字输入输出最新快照 */
 } DataHubState;
 
 extern DataHubState g_datahub; /* Keil Watch 可直接观察这个全局数据中心 */
@@ -89,6 +104,8 @@ void DataHub_UpdateAd7606Status(uint32_t sample_count,
                                 uint32_t timeout_count,
                                 int ready,
                                 int read_ok);
+void DataHub_PublishDigitalIo(const DataHubDigitalIoData *digital_io);
+void DataHub_GetDigitalIo(DataHubDigitalIoData *digital_io);
 #ifdef __cplusplus
 }
 #endif

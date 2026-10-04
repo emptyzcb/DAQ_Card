@@ -129,3 +129,32 @@ void DataHub_UpdateAd7606Status(uint32_t sample_count,
     g_datahub.ad7606.last_read_ok = read_ok;
     taskEXIT_CRITICAL();
 }
+
+void DataHub_PublishDigitalIo(const DataHubDigitalIoData *digital_io)
+{
+    uint32_t next_seq;
+
+    if (digital_io == 0)
+    {
+        return;
+    }
+
+    /* 整包更新，保证读取者拿到同一扫描时刻的输入和输出状态。 */
+    taskENTER_CRITICAL();
+    next_seq = g_datahub.digital_io.seq + 1U;
+    g_datahub.digital_io = *digital_io;
+    g_datahub.digital_io.seq = next_seq;
+    taskEXIT_CRITICAL();
+}
+
+void DataHub_GetDigitalIo(DataHubDigitalIoData *digital_io)
+{
+    if (digital_io == 0)
+    {
+        return;
+    }
+
+    taskENTER_CRITICAL();
+    *digital_io = g_datahub.digital_io;
+    taskEXIT_CRITICAL();
+}

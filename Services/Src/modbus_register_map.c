@@ -39,6 +39,7 @@ int MODBUS_REGISTER_ReadHolding(uint16_t address, uint16_t *value)
 {
   DataHubImuData imu;
   DataHubAd7606Data ad7606;
+  DataHubDigitalIoData digital_io;
 
   if (value == 0)
   {
@@ -57,11 +58,13 @@ int MODBUS_REGISTER_ReadHolding(uint16_t address, uint16_t *value)
       return 1;
 
     case 0x0001U:
-      *value = DIGITAL_IO_SERVICE_ReadInputs();
+      DataHub_GetDigitalIo(&digital_io);
+      *value = digital_io.input_mask;
       return 1;
 
     case 0x0002U:
-      *value = DIGITAL_IO_SERVICE_GetOutputMask();
+      DataHub_GetDigitalIo(&digital_io);
+      *value = digital_io.output_mask;
       return 1;
 
     case 0x0003U:
