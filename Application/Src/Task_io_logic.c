@@ -1,8 +1,8 @@
 #include "sys.h"
 
-void Task_io_logic(void *arg)
+void AppTask_IoLogic(void *argument)
 {
-  (void)arg;
+  (void)argument;
   IO_LOGIC_ENGINE_Init();
 
   for (;;)

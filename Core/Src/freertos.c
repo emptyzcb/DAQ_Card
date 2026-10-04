@@ -96,11 +96,17 @@ void MX_FREERTOS_Init(void) {
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+  if (defaultTaskHandle == NULL)
+  {
+    Error_Handler();
+  }
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
-  
-  vMyFreeRTOS_Task_Start();
+  /* Create the complete product task set before the scheduler can run. */
+  if (APP_TASKS_Create() != pdPASS)
+  {
+    Error_Handler();
+  }
   
   /* USER CODE END RTOS_THREADS */
 
@@ -120,13 +126,13 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
-  printf("Project start ok!\r\n");
-  /* Infinite loop */
-  for(;;)
-  {
-      
-      osDelay(1000);
-  }
+  (void)argument;
+
+  /*
+   * System indicator task. The LED service provides a non-blocking heartbeat;
+   * its visible activity confirms that the scheduler remains operational.
+   */
+  APP_RunLedBlink();
   /* USER CODE END StartDefaultTask */
 }
 

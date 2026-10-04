@@ -164,8 +164,8 @@ int BSP_AD7606_ReadSample(BSP_AD7606_Sample *sample, uint32_t timeout_ms)
   return 1;
 }
 
-BSP_AD7606_TestResult BSP_AD7606_RunSelfTest(BSP_AD7606_Sample *sample,
-                                             uint32_t timeout_ms)
+BSP_AD7606_HealthResult BSP_AD7606_CheckHealth(BSP_AD7606_Sample *sample,
+                                               uint32_t timeout_ms)
 {
   uint32_t channel;
   uint32_t suspicious = 0U;
@@ -173,11 +173,11 @@ BSP_AD7606_TestResult BSP_AD7606_RunSelfTest(BSP_AD7606_Sample *sample,
 
   if (sample == 0)
   {
-    return BSP_AD7606_TEST_DATA_SUSPICIOUS;
+    return BSP_AD7606_HEALTH_DATA_SUSPICIOUS;
   }
   if (HAL_GPIO_ReadPin(BSP_AD7606_BUSY_GPIO_Port, BSP_AD7606_BUSY_Pin) == GPIO_PIN_SET)
   {
-    return BSP_AD7606_TEST_BUSY_STUCK_HIGH;
+    return BSP_AD7606_HEALTH_BUSY_STUCK_HIGH;
   }
 
   for (attempt = 0U; attempt < 3U; attempt++)
@@ -191,11 +191,11 @@ BSP_AD7606_TestResult BSP_AD7606_RunSelfTest(BSP_AD7606_Sample *sample,
   }
   if (attempt == 3U)
   {
-    return BSP_AD7606_TEST_BUSY_DID_NOT_ASSERT;
+    return BSP_AD7606_HEALTH_BUSY_DID_NOT_ASSERT;
   }
   if (!ad7606_wait_busy(GPIO_PIN_RESET, timeout_ms))
   {
-    return BSP_AD7606_TEST_BUSY_TIMEOUT;
+    return BSP_AD7606_HEALTH_BUSY_TIMEOUT;
   }
 
   ad7606_read_serial(sample->raw);
@@ -208,82 +208,5 @@ BSP_AD7606_TestResult BSP_AD7606_RunSelfTest(BSP_AD7606_Sample *sample,
     }
   }
   return (suspicious == BSP_AD7606_CHANNEL_COUNT) ?
-         BSP_AD7606_TEST_DATA_SUSPICIOUS : BSP_AD7606_TEST_PASS;
-}
-
-GPIO_PinState BSP_AD7606_ProbeBusyWithPullup(void)
-{
-  GPIO_InitTypeDef gpio = {0};
-  GPIO_PinState state;
-
-  gpio.Pin = BSP_AD7606_BUSY_Pin;
-  gpio.Mode = GPIO_MODE_INPUT;
-  gpio.Pull = GPIO_PULLUP;
-  gpio.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  HAL_GPIO_Init(BSP_AD7606_BUSY_GPIO_Port, &gpio);
-  HAL_Delay(1U);
-  state = HAL_GPIO_ReadPin(BSP_AD7606_BUSY_GPIO_Port, BSP_AD7606_BUSY_Pin);
-
-  gpio.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(BSP_AD7606_BUSY_GPIO_Port, &gpio);
-  return state;
-}
-
-void BSP_AD7606_RunBusyTrace(BSP_AD7606_BusyTrace *trace)
-{
-  uint32_t start_cycle;
-  uint32_t elapsed;
-  uint32_t timeout_cycles;
-  uint32_t guard;
-
-  if (trace == 0)
-  {
-    return;
-  }
-
-  trace->busy_before = (BSP_AD7606_BUSY_GPIO_Port->IDR & BSP_AD7606_BUSY_Pin) ?
-                       GPIO_PIN_SET : GPIO_PIN_RESET;
-  trace->busy_seen = 0U;
-  trace->scan_cycles = 0U;
-  trace->busy_high_cycles = 0U;
-  trace->busy_wait_cycles = 0U;
-
-  ad7606_write(BSP_AD7606_CONVST_GPIO_Port, BSP_AD7606_CONVST_Pin, GPIO_PIN_RESET);
-  HAL_Delay(1U);
-  trace->convst_low_readback =
-    (BSP_AD7606_CONVST_GPIO_Port->IDR & BSP_AD7606_CONVST_Pin) ? GPIO_PIN_SET : GPIO_PIN_RESET;
-
-  DWT->CYCCNT = 0U;
-  ad7606_write(BSP_AD7606_CONVST_GPIO_Port, BSP_AD7606_CONVST_Pin, GPIO_PIN_SET);
-  trace->convst_high_readback =
-    (BSP_AD7606_CONVST_GPIO_Port->IDR & BSP_AD7606_CONVST_Pin) ? GPIO_PIN_SET : GPIO_PIN_RESET;
-
-  timeout_cycles = SystemCoreClock / 1000U;
-  guard = SystemCoreClock / 100U;
-  start_cycle = DWT->CYCCNT;
-  do
-  {
-    if ((BSP_AD7606_BUSY_GPIO_Port->IDR & BSP_AD7606_BUSY_Pin) != 0U)
-    {
-      trace->busy_seen = 1U;
-      trace->busy_wait_cycles = DWT->CYCCNT - start_cycle;
-      break;
-    }
-    elapsed = DWT->CYCCNT - start_cycle;
-    guard--;
-  } while ((elapsed < timeout_cycles) && (guard != 0U));
-  trace->scan_cycles = DWT->CYCCNT - start_cycle;
-
-  if (trace->busy_seen != 0U)
-  {
-    start_cycle = DWT->CYCCNT;
-    while ((BSP_AD7606_BUSY_GPIO_Port->IDR & BSP_AD7606_BUSY_Pin) != 0U)
-    {
-      if ((DWT->CYCCNT - start_cycle) >= (SystemCoreClock / 100U))
-      {
-        break;
-      }
-    }
-    trace->busy_high_cycles = DWT->CYCCNT - start_cycle;
-  }
+         BSP_AD7606_HEALTH_DATA_SUSPICIOUS : BSP_AD7606_HEALTH_OK;
 }

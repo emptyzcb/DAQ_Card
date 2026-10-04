@@ -17,20 +17,6 @@ typedef struct
 static RS485_UART_FrameQueue rs485_rx_queue;
 static uint8_t rs485_rx_work_buffer[RS485_UART_FRAME_MAX_SIZE];
 
-#if RS485_COMM_LED_DIAGNOSTIC
-typedef enum
-{
-  RS485_DIAG_NO_FRAME = 0U,
-  RS485_DIAG_VALID_FRAME,
-  RS485_DIAG_INVALID_FRAME
-} RS485_DiagnosticState;
-
-static volatile RS485_DiagnosticState rs485_diag_state = RS485_DIAG_NO_FRAME;
-static volatile uint32_t rs485_diag_last_frame_tick;
-#define RS485_DIAG_NO_DATA_TIMEOUT_MS 1500U
-#define RS485_DIAG_BLINK_INTERVAL_MS  200U
-#endif
-
 static void rs485_set_direction(GPIO_PinState state)
 {
   HAL_GPIO_WritePin(RS485_DIR_GPIO_Port, RS485_DIR_Pin, state);
@@ -108,45 +94,6 @@ int RS485_UART_Send(const uint8_t *data, uint16_t length, uint32_t timeout_ms)
 uint32_t RS485_UART_RxDropped(void)
 {
   return rs485_rx_queue.dropped;
-}
-
-void RS485_UART_DiagnosticMarkFrame(uint8_t valid)
-{
-#if RS485_COMM_LED_DIAGNOSTIC
-  rs485_diag_last_frame_tick = HAL_GetTick();
-  rs485_diag_state = (valid != 0U) ? RS485_DIAG_VALID_FRAME : RS485_DIAG_INVALID_FRAME;
-#else
-  (void)valid;
-#endif
-}
-
-void RS485_UART_DiagnosticProcess(void)
-{
-#if RS485_COMM_LED_DIAGNOSTIC
-  uint32_t now = HAL_GetTick();
-
-  if ((rs485_diag_last_frame_tick == 0U) ||
-      ((now - rs485_diag_last_frame_tick) >= RS485_DIAG_NO_DATA_TIMEOUT_MS))
-  {
-    rs485_diag_state = RS485_DIAG_NO_FRAME;
-  }
-
-  if (rs485_diag_state == RS485_DIAG_VALID_FRAME)
-  {
-    HAL_GPIO_WritePin(PA0_LED_GPIO_Port, PA0_LED_Pin, PA0_LED_ON);
-  }
-  else if (rs485_diag_state == RS485_DIAG_INVALID_FRAME)
-  {
-    GPIO_PinState state = (((now / RS485_DIAG_BLINK_INTERVAL_MS) & 0x01U) != 0U)
-                              ? PA0_LED_ON
-                              : PA0_LED_OFF;
-    HAL_GPIO_WritePin(PA0_LED_GPIO_Port, PA0_LED_Pin, state);
-  }
-  else
-  {
-    HAL_GPIO_WritePin(PA0_LED_GPIO_Port, PA0_LED_Pin, PA0_LED_OFF);
-  }
-#endif
 }
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)

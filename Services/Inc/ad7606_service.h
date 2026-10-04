@@ -30,7 +30,7 @@ typedef struct
   uint32_t sample_count;
   uint32_t timeout_count;
   uint32_t last_sample_tick;
-  BSP_AD7606_TestResult self_test;
+  BSP_AD7606_HealthResult health;
 } AD7606_SERVICE_Diagnostics;
 
 void AD7606_SERVICE_Init(void);

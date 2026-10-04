@@ -1,10 +1,5 @@
 #include "ad7606_service.h"
 #include "datahub.h"
-#include "bsp_console.h"
-
-#include <stdio.h>
-
-#define AD7606_LOG_LITERAL(text) ad7606_log_text((text), (int)(sizeof(text) - 1U))
 
 static AD7606_SERVICE_Config ad7606_config = {
   10U,
@@ -15,81 +10,6 @@ static AD7606_SERVICE_Config ad7606_config = {
 
 static AD7606_SERVICE_Diagnostics ad7606_diag;
 static BSP_AD7606_Sample ad7606_latest_sample;
-static uint32_t ad7606_last_log_tick;
-static GPIO_PinState ad7606_busy_pullup_state;
-
-static void ad7606_log_text(const char *text, int length)
-{
-  if ((text != 0) && (length > 0))
-  {
-    (void)BSP_CONSOLE_Write((const uint8_t *)text, (uint16_t)length);
-  }
-}
-
-static void ad7606_log_sample(const char *label)
-{
-  char line[192];
-  int length;
-
-  length = snprintf(line, sizeof(line),
-                    "[AD7606] %s raw=%d,%d,%d,%d,%d,%d,%d,%d sample=%lu errors=%lu\r\n",
-                    label,
-                    (int)ad7606_latest_sample.raw[0],
-                    (int)ad7606_latest_sample.raw[1],
-                    (int)ad7606_latest_sample.raw[2],
-                    (int)ad7606_latest_sample.raw[3],
-                    (int)ad7606_latest_sample.raw[4],
-                    (int)ad7606_latest_sample.raw[5],
-                    (int)ad7606_latest_sample.raw[6],
-                    (int)ad7606_latest_sample.raw[7],
-                    (unsigned long)ad7606_diag.sample_count,
-                    (unsigned long)ad7606_diag.timeout_count);
-  if ((length > 0) && (length < (int)sizeof(line)))
-  {
-    ad7606_log_text(line, length);
-  }
-}
-
-static void ad7606_log_self_test(void)
-{
-  static const char *const result_text[] = {
-    "NOT_RUN", "PASS", "BUSY_STUCK_HIGH", "BUSY_DID_NOT_ASSERT",
-    "BUSY_TIMEOUT", "DATA_SUSPICIOUS"
-  };
-  char line[96];
-  uint32_t result = (uint32_t)ad7606_diag.self_test;
-  int length;
-
-  if (result >= (sizeof(result_text) / sizeof(result_text[0])))
-  {
-    result = 0U;
-  }
-  length = snprintf(line, sizeof(line),
-                    "[AD7606] self-test=%lu (%s), range=+/-10V, OS=none\r\n",
-                    (unsigned long)ad7606_diag.self_test, result_text[result]);
-  if ((length > 0) && (length < (int)sizeof(line)))
-  {
-    ad7606_log_text(line, length);
-  }
-}
-
-static void ad7606_log_control_pins(void)
-{
-  char line[96];
-  int length = snprintf(line, sizeof(line),
-                        "[AD7606] pins: CONVST=%u RESET=%u BUSY=%u BUSY_PULLUP=%u\r\n",
-                        (unsigned int)HAL_GPIO_ReadPin(BSP_AD7606_CONVST_GPIO_Port,
-                                                      BSP_AD7606_CONVST_Pin),
-                        (unsigned int)HAL_GPIO_ReadPin(BSP_AD7606_RESET_GPIO_Port,
-                                                      BSP_AD7606_RESET_Pin),
-                        (unsigned int)HAL_GPIO_ReadPin(BSP_AD7606_BUSY_GPIO_Port,
-                                                      BSP_AD7606_BUSY_Pin),
-                        (unsigned int)ad7606_busy_pullup_state);
-  if ((length > 0) && (length < (int)sizeof(line)))
-  {
-    ad7606_log_text(line, length);
-  }
-}
 
 static void ad7606_publish_to_datahub(int read_ok)
 {
@@ -154,17 +74,13 @@ void AD7606_SERVICE_Init(void)
   ad7606_diag.sample_count = 0U;
   ad7606_diag.timeout_count = 0U;
   ad7606_diag.last_sample_tick = HAL_GetTick();
-  ad7606_diag.self_test = BSP_AD7606_TEST_NOT_RUN;
-  ad7606_last_log_tick = ad7606_diag.last_sample_tick;
-
-  AD7606_LOG_LITERAL("\r\n[AD7606] init: dual-DOUT serial, PD4-PD9/PE3-PE7\r\n");
+  ad7606_diag.health = BSP_AD7606_HEALTH_NOT_CHECKED;
 
   BSP_AD7606_Init(ad7606_config.range, ad7606_config.oversampling);
-  ad7606_diag.self_test = BSP_AD7606_RunSelfTest(&ad7606_latest_sample,
-                                                 ad7606_config.timeout_ms);
-  ad7606_busy_pullup_state = BSP_AD7606_ProbeBusyWithPullup();
-  if ((ad7606_diag.self_test == BSP_AD7606_TEST_PASS) ||
-      (ad7606_diag.self_test == BSP_AD7606_TEST_DATA_SUSPICIOUS))
+  ad7606_diag.health = BSP_AD7606_CheckHealth(&ad7606_latest_sample,
+                                              ad7606_config.timeout_ms);
+  if ((ad7606_diag.health == BSP_AD7606_HEALTH_OK) ||
+      (ad7606_diag.health == BSP_AD7606_HEALTH_DATA_SUSPICIOUS))
   {
     ad7606_diag.state = AD7606_SERVICE_STATE_RUNNING;
     ad7606_diag.sample_count = 1U;
@@ -174,12 +90,6 @@ void AD7606_SERVICE_Init(void)
   {
     ad7606_diag.state = AD7606_SERVICE_STATE_ERROR;
     ad7606_publish_to_datahub(0);
-  }
-  ad7606_log_self_test();
-  ad7606_log_control_pins();
-  if (ad7606_diag.state == AD7606_SERVICE_STATE_RUNNING)
-  {
-    ad7606_log_sample("first");
   }
   DataHub_UpdateAd7606Status(ad7606_diag.sample_count,
                              ad7606_diag.timeout_count,
@@ -193,21 +103,17 @@ void AD7606_SERVICE_Process(void)
 
   if (ad7606_diag.state != AD7606_SERVICE_STATE_RUNNING)
   {
-    if ((now - ad7606_last_log_tick) >= 1000U)
+    if ((now - ad7606_diag.last_sample_tick) >= 1000U)
     {
-      ad7606_last_log_tick = now;
-      ad7606_diag.self_test = BSP_AD7606_RunSelfTest(&ad7606_latest_sample,
-                                                     ad7606_config.timeout_ms);
-      ad7606_busy_pullup_state = BSP_AD7606_ProbeBusyWithPullup();
-      ad7606_log_self_test();
-      ad7606_log_control_pins();
-      if ((ad7606_diag.self_test == BSP_AD7606_TEST_PASS) ||
-          (ad7606_diag.self_test == BSP_AD7606_TEST_DATA_SUSPICIOUS))
+      ad7606_diag.last_sample_tick = now;
+      ad7606_diag.health = BSP_AD7606_CheckHealth(&ad7606_latest_sample,
+                                                  ad7606_config.timeout_ms);
+      if ((ad7606_diag.health == BSP_AD7606_HEALTH_OK) ||
+          (ad7606_diag.health == BSP_AD7606_HEALTH_DATA_SUSPICIOUS))
       {
         ad7606_diag.state = AD7606_SERVICE_STATE_RUNNING;
         ad7606_diag.sample_count++;
         ad7606_publish_to_datahub(1);
-        ad7606_log_sample("recovered");
       }
     }
     return;
@@ -231,11 +137,6 @@ void AD7606_SERVICE_Process(void)
     ad7606_publish_to_datahub(0);
   }
 
-  if ((now - ad7606_last_log_tick) >= 1000U)
-  {
-    ad7606_last_log_tick = now;
-    ad7606_log_sample((ad7606_diag.timeout_count == 0U) ? "running" : "check");
-  }
 }
 
 const BSP_AD7606_Sample *AD7606_SERVICE_GetLatestSample(void)

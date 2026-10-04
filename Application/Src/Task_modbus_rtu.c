@@ -1,11 +1,11 @@
 #include "sys.h"
 
-void Task_modbus_rtu(void *arg)
+void AppTask_ModbusRtu(void *argument)
 {
   uint8_t request[RS485_UART_FRAME_MAX_SIZE];
   uint8_t response[MODBUS_RTU_MAX_ADU_SIZE];
 
-  (void)arg;
+  (void)argument;
 
   for (;;)
   {
@@ -21,21 +21,11 @@ void Task_modbus_rtu(void *arg)
                                                            response,
                                                            (uint16_t)sizeof(response));
 
-      /* A normal response means CRC/address/function validation succeeded. */
-      RS485_UART_DiagnosticMarkFrame((response_length > 1U) &&
-                                     (response[1] == request[1]));
-
       if (response_length > 0U)
       {
         (void)RS485_UART_Send(response, response_length, 100U);
       }
     }
-    else if (receive_result < 0)
-    {
-      RS485_UART_DiagnosticMarkFrame(0U);
-    }
-
-    RS485_UART_DiagnosticProcess();
     vTaskDelay(pdMS_TO_TICKS(1U));
   }
 }

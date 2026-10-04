@@ -601,6 +601,16 @@
               <FilePath>..\Application\Inc\Task_io_logic.h</FilePath>
             </File>
             <File>
+              <FileName>Task_ad7606.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Application\Src\Task_ad7606.c</FilePath>
+            </File>
+            <File>
+              <FileName>Task_ad7606.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Application\Inc\Task_ad7606.h</FilePath>
+            </File>
+            <File>
               <FileName>sys.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Application/Src/sys.c</FilePath>
@@ -671,11 +681,6 @@
           <GroupName>Services</GroupName>
           <Files>
             <File>
-              <FileName>daq_service.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Services/Src/daq_service.c</FilePath>
-            </File>
-            <File>
               <FileName>imu_service.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Services/Src/imu_service.c</FilePath>
@@ -684,11 +689,6 @@
               <FileName>led_blink.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Services/Src/led_blink.c</FilePath>
-            </File>
-            <File>
-              <FileName>stream_protocol.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Services/Src/stream_protocol.c</FilePath>
             </File>
             <File>
               <FileName>datahub.c</FileName>
@@ -714,11 +714,6 @@
               <FileName>rs485_uart.h</FileName>
               <FileType>5</FileType>
               <FilePath>../Services/Inc/rs485_uart.h</FilePath>
-            </File>
-            <File>
-              <FileName>rs485_uart_irq.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Services/Src/rs485_uart_irq.c</FilePath>
             </File>
             <File>
               <FileName>modbus_rtu.c</FileName>

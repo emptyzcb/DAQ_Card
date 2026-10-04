@@ -22,7 +22,6 @@ typedef struct
 {
   uint32_t rx_count;
   uint32_t tx_count;
-  uint32_t echo_count;
   uint32_t rx_error_count;
   uint32_t tx_error_count;
   uint32_t last_rx_tick;

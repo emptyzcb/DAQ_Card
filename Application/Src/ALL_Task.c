@@ -1,101 +1,86 @@
 #include "sys.h"
 
-TaskHandle_t TASKS_START_Handler;
-configSTACK_DEPTH_TYPE DEPTH_TYPE_TASKS_START = 128;
-#define TASKS_START_Priority 10
-void TASKS_START(void *arg);
+/*
+ * Task configuration policy
+ * -------------------------
+ * Stack depths are FreeRTOS StackType_t elements, not bytes. Priorities are
+ * relative within this product: communication is serviced first, acquisition
+ * and deterministic rule execution follow, and background IO supervision is
+ * lowest. Tasks must use finite waits so one failed peripheral cannot stall
+ * unrelated product functions.
+ */
+#define APP_TASK_ATTITUDE_STACK_DEPTH      1024U
+#define APP_TASK_ATTITUDE_PRIORITY         3U
+#define APP_TASK_MODBUS_STACK_DEPTH        512U
+#define APP_TASK_MODBUS_PRIORITY           4U
+#define APP_TASK_IO_LOGIC_STACK_DEPTH      512U
+#define APP_TASK_IO_LOGIC_PRIORITY         3U
+#define APP_TASK_AD7606_STACK_DEPTH        512U
+#define APP_TASK_AD7606_PRIORITY           3U
+#define APP_TASK_DIGITAL_IO_STACK_DEPTH    256U
+#define APP_TASK_DIGITAL_IO_PRIORITY       2U
 
-TaskHandle_t Task_att_est_Handler;
-configSTACK_DEPTH_TYPE DEPTH_TYPE_Task_att_est = 1024;
-#define Task_att_est_Priority 3
-void Task_att_est(void *arg);
+static TaskHandle_t g_attitude_task_handle;
+static TaskHandle_t g_modbus_task_handle;
+static TaskHandle_t g_io_logic_task_handle;
+static TaskHandle_t g_ad7606_task_handle;
+static TaskHandle_t g_digital_io_task_handle;
 
-TaskHandle_t Task_modbus_rtu_Handler;
-configSTACK_DEPTH_TYPE DEPTH_TYPE_Task_modbus_rtu = 512;
-#define Task_modbus_rtu_Priority 4
-
-TaskHandle_t Task_io_logic_Handler;
-configSTACK_DEPTH_TYPE DEPTH_TYPE_Task_io_logic = 512;
-#define Task_io_logic_Priority 3
-
-TaskHandle_t Task_ad7606_Handler;
-configSTACK_DEPTH_TYPE DEPTH_TYPE_Task_ad7606 = 512;
-#define Task_ad7606_Priority 3
-void Task_ad7606(void *arg);
-
-TaskHandle_t Task_digital_io_Handler;
-configSTACK_DEPTH_TYPE DEPTH_TYPE_Task_digital_io = 256;
-#define Task_digital_io_Priority 2
-void Task_digital_io(void *arg);
-
-void vMyFreeRTOS_Task_Start(void)
+BaseType_t APP_TASKS_Create(void)
 {
-    xTaskCreate(
-        TASKS_START,
-        "TASKS_START",
-        DEPTH_TYPE_TASKS_START,
-        NULL,
-        TASKS_START_Priority,
-        &TASKS_START_Handler);
-}
+  BaseType_t result;
 
-void TASKS_START(void *arg)
-{
-    (void)arg;
+  /*
+   * Attitude task: acquires BMI270 data and publishes the fused orientation.
+   * Input: IMU service. Output: DataHub IMU snapshot. Nominal period: 1 ms.
+   * A large stack is reserved for floating-point fusion state. Read failures
+   * are published as status and retried on the next finite-period iteration.
+   */
+  result = xTaskCreate(AppTask_Attitude, "attitude",
+                       APP_TASK_ATTITUDE_STACK_DEPTH, NULL,
+                       APP_TASK_ATTITUDE_PRIORITY, &g_attitude_task_handle);
+  if (result != pdPASS) { return pdFAIL; }
 
-    vTaskSuspendAll();
+  /*
+   * Modbus task: receives RS485 frames, validates RTU requests and transmits
+   * bounded responses. Input/output: USART1 RS485. Poll period: 1 ms.
+   * It has the highest application priority to avoid serial frame loss; all
+   * UART operations and protocol responses use finite timeouts.
+   */
+  result = xTaskCreate(AppTask_ModbusRtu, "modbus_rtu",
+                       APP_TASK_MODBUS_STACK_DEPTH, NULL,
+                       APP_TASK_MODBUS_PRIORITY, &g_modbus_task_handle);
+  if (result != pdPASS) { return pdFAIL; }
 
-    xTaskCreate(
-        Task_att_est,
-        "Task_att_est",
-        DEPTH_TYPE_Task_att_est,
-        NULL,
-        Task_att_est_Priority,
-        &Task_att_est_Handler);
+  /*
+   * IO logic task: evaluates the active persistent IOCF rule image against
+   * debounced digital inputs and updates the eight outputs. Period: 10 ms.
+   * Invalid or absent configuration drives the engine to its safe stop state.
+   */
+  result = xTaskCreate(AppTask_IoLogic, "io_logic",
+                       APP_TASK_IO_LOGIC_STACK_DEPTH, NULL,
+                       APP_TASK_IO_LOGIC_PRIORITY, &g_io_logic_task_handle);
+  if (result != pdPASS) { return pdFAIL; }
 
-    xTaskCreate(
-        Task_modbus_rtu,
-        "Task_modbus_rtu",
-        DEPTH_TYPE_Task_modbus_rtu,
-        NULL,
-        Task_modbus_rtu_Priority,
-        &Task_modbus_rtu_Handler);
+  /*
+   * AD7606 task: advances the non-blocking converter service and publishes
+   * eight-channel samples to DataHub. Period: 1 ms. Hardware timeouts are
+   * contained by the service and reported through product diagnostics.
+   */
+  result = xTaskCreate(AppTask_Ad7606, "ad7606",
+                       APP_TASK_AD7606_STACK_DEPTH, NULL,
+                       APP_TASK_AD7606_PRIORITY, &g_ad7606_task_handle);
+  if (result != pdPASS) { return pdFAIL; }
 
-    xTaskCreate(
-        Task_io_logic,
-        "Task_io_logic",
-        DEPTH_TYPE_Task_io_logic,
-        NULL,
-        Task_io_logic_Priority,
-        &Task_io_logic_Handler);
+  /*
+   * Digital IO task: supervises the eight isolated inputs and output state.
+   * Input/output: digital IO service. Period: 50 ms. It is background work,
+   * so it runs below protocol, acquisition and rule-processing tasks.
+   */
+  result = xTaskCreate(AppTask_DigitalIo, "digital_io",
+                       APP_TASK_DIGITAL_IO_STACK_DEPTH, NULL,
+                       APP_TASK_DIGITAL_IO_PRIORITY, &g_digital_io_task_handle);
+  if (result != pdPASS) { return pdFAIL; }
 
-    xTaskCreate(
-        Task_ad7606,
-        "Task_ad7606",
-        DEPTH_TYPE_Task_ad7606,
-        NULL,
-        Task_ad7606_Priority,
-        &Task_ad7606_Handler);
-
-    xTaskCreate(
-        Task_digital_io,
-        "Task_digital_io",
-        DEPTH_TYPE_Task_digital_io,
-        NULL,
-        Task_digital_io_Priority,
-        &Task_digital_io_Handler);
-
-    xTaskResumeAll();
-    vTaskDelete(NULL);
-}
-
-void Task_ad7606(void *arg)
-{
-    (void)arg;
-
-    for (;;)
-    {
-        AD7606_SERVICE_Process();
-        vTaskDelay(pdMS_TO_TICKS(1U));
-    }
+  return pdPASS;
 }

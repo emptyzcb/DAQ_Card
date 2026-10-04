@@ -1,7 +1,7 @@
 #include "sys.h"                /* 引入系统总头文件，里面包含 FreeRTOS、IMU 服务、姿态算法等头文件 */
 
 /*
- * 函数：Task_att_est
+ * 函数：AppTask_Attitude
  * 功能：姿态估计线程。
  * 线程职责：
  *   1. 初始化 BMI270。
@@ -9,7 +9,7 @@
  *   3. 把传感器数据送入姿态解算算法。
  *   4. 在算法状态中持续更新欧拉角和四元数。
  */
-void Task_att_est(void *arg)
+void AppTask_Attitude(void *argument)
 {
     IMU_SERVICE_6AxisData imu;   /* 保存 IMU 服务层读取到的 6 轴数据，包含 raw/g/dps */
     AttitudeEstConfig att_cfg;   /* 姿态解算配置参数，例如采样率和滤波系数 */
@@ -23,7 +23,7 @@ void Task_att_est(void *arg)
     TickType_t now_tick;         /* 当前 FreeRTOS tick */
     float dt;                    /* 两次姿态更新之间的时间间隔，单位 s */
 
-    (void)arg;                   /* 当前线程暂时不使用传入参数，避免编译器未使用警告 */
+    (void)argument;              /* 当前线程暂时不使用传入参数，避免编译器未使用警告 */
     (void)IMU_SERVICE_Init();    /* 初始化 IMU 服务层，内部会初始化 BMI270 */
 
     last_update_tick = xTaskGetTickCount(); /* 姿态更新 tick 从当前时间开始 */

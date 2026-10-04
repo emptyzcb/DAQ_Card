@@ -61,37 +61,17 @@ void Error_Handler(void);
 #define RS485_DE_RE_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
-#define APP_RS485_DEBUG_ONLY 0U
-
-/* Standalone AD7606 hardware test: USART2 + AD7606 GPIO only. */
-#define APP_AD7606_DIAGNOSTIC_ONLY 1U
-
-/* Temporary TX-only test. Set both test switches to 0 to restore Modbus. */
-#define APP_RS485_TX_LOG_ONLY 0U
-
-/* Temporary RX-only LED test. Any received frame turns PA0 on. */
-#define APP_RS485_RX_LED_ONLY 0U
-
-/* Minimal Modbus test: skip sensors/CAN and run only USART1 + Modbus. */
-#define APP_RS485_MINIMAL_MODBUS_ONLY 1U
-
-/* Read live board state and AD7606 samples through Modbus. */
-#define MODBUS_REGISTER_TEST_MODE 0U
-
-/* PA0 communication diagnostic: off=no frame, on=valid frame, blink=bad frame. */
-#define RS485_COMM_LED_DIAGNOSTIC 1U
-
 #define PA0_LED_Pin GPIO_PIN_0
 #define PA0_LED_GPIO_Port GPIOA
 
 #define RS485_DIR_Pin GPIO_PIN_12
 #define RS485_DIR_GPIO_Port GPIOA
 
-/* LED anode is tied to PA0, so high level turns it on. */
+/* PA0 LED is active-high: GPIO high turns the indicator on. */
 #define PA0_LED_ON GPIO_PIN_SET
 #define PA0_LED_OFF GPIO_PIN_RESET
 
-/* RS485 transceiver direction: high for transmit, low for receive. */
+/* Verified RS485 direction polarity: high transmits, low receives. */
 #define RS485_DIR_TX GPIO_PIN_SET
 #define RS485_DIR_RX GPIO_PIN_RESET
 

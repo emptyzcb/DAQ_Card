@@ -1,15 +1,13 @@
 #include "sys.h"
 
-void Task_digital_io(void *arg)
+void AppTask_DigitalIo(void *argument)
 {
   uint16_t last_input_mask;
   uint32_t last_report_tick;
 
-  (void)arg;
+  (void)argument;
 
-  DIGITAL_IO_SERVICE_Init();
-  DIGITAL_IO_SERVICE_AllOutputsOff();
-
+  /* The platform initializes the service and forces all outputs safe first. */
   last_input_mask = DIGITAL_IO_SERVICE_ReadInputs();
   last_report_tick = HAL_GetTick();
 

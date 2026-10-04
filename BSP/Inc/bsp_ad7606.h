@@ -60,34 +60,21 @@ typedef struct
 
 typedef enum
 {
-  BSP_AD7606_TEST_NOT_RUN = 0,
-  BSP_AD7606_TEST_PASS,
-  BSP_AD7606_TEST_BUSY_STUCK_HIGH,
-  BSP_AD7606_TEST_BUSY_DID_NOT_ASSERT,
-  BSP_AD7606_TEST_BUSY_TIMEOUT,
-  BSP_AD7606_TEST_DATA_SUSPICIOUS
-} BSP_AD7606_TestResult;
-
-typedef struct
-{
-  GPIO_PinState busy_before;
-  GPIO_PinState convst_low_readback;
-  GPIO_PinState convst_high_readback;
-  uint32_t busy_seen;
-  uint32_t scan_cycles;
-  uint32_t busy_high_cycles;
-  uint32_t busy_wait_cycles;
-} BSP_AD7606_BusyTrace;
+  BSP_AD7606_HEALTH_NOT_CHECKED = 0,
+  BSP_AD7606_HEALTH_OK,
+  BSP_AD7606_HEALTH_BUSY_STUCK_HIGH,
+  BSP_AD7606_HEALTH_BUSY_DID_NOT_ASSERT,
+  BSP_AD7606_HEALTH_BUSY_TIMEOUT,
+  BSP_AD7606_HEALTH_DATA_SUSPICIOUS
+} BSP_AD7606_HealthResult;
 
 void BSP_AD7606_Init(BSP_AD7606_Range range, BSP_AD7606_Oversampling oversampling);
 void BSP_AD7606_Reset(void);
 void BSP_AD7606_SetRange(BSP_AD7606_Range range);
 void BSP_AD7606_SetOversampling(BSP_AD7606_Oversampling oversampling);
 int BSP_AD7606_ReadSample(BSP_AD7606_Sample *sample, uint32_t timeout_ms);
-BSP_AD7606_TestResult BSP_AD7606_RunSelfTest(BSP_AD7606_Sample *sample,
-                                             uint32_t timeout_ms);
-GPIO_PinState BSP_AD7606_ProbeBusyWithPullup(void);
-void BSP_AD7606_RunBusyTrace(BSP_AD7606_BusyTrace *trace);
+BSP_AD7606_HealthResult BSP_AD7606_CheckHealth(BSP_AD7606_Sample *sample,
+                                               uint32_t timeout_ms);
 
 #ifdef __cplusplus
 }

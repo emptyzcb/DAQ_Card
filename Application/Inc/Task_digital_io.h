@@ -1,6 +1,6 @@
 #ifndef TASK_DIGITAL_IO_H
 #define TASK_DIGITAL_IO_H
 
-void Task_digital_io(void *arg);
+void AppTask_DigitalIo(void *argument);
 
 #endif /* TASK_DIGITAL_IO_H */

@@ -22,6 +22,7 @@ extern "C" {
 #include "app.h"
 #include "ALL_Task.h"
 #include "Task_att_est.h"
+#include "Task_ad7606.h"
 #include "Task_digital_io.h"
 #include "Task_modbus_rtu.h"
 #include "Task_io_logic.h"
@@ -35,7 +36,6 @@ extern "C" {
 #include "bsp_led.h"
 #include "bsp_sensor.h"
 
-#include "daq_service.h"
 #include "ad7606_service.h"
 #include "can_service.h"
 #include "datahub.h"
@@ -48,7 +48,6 @@ extern "C" {
 #include "io_config_storage.h"
 #include "io_logic_engine.h"
 #include "io_logic_protocol.h"
-#include "stream_protocol.h"
 
 #include "attitude_est.h"
 

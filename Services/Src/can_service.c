@@ -197,8 +197,5 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
   can_diag.last_rx_tick = HAL_GetTick();
   can_diag.last_rx = frame;
 
-  if (CAN_SERVICE_Send(&frame) != 0)
-  {
-    can_diag.echo_count++;
-  }
+  /* Product mode records the frame for consumers; it never echoes traffic. */
 }

@@ -4,11 +4,6 @@ MDK-ARM/F430VI/
 **/Listings/
 **/RTE/
 
-# .NET host build outputs
-Host/**/bin/
-Host/**/obj/
-Host/**/publish/
-
 # Large unused CMSIS DSP package
 Drivers/CMSIS/DSP/
 
@@ -44,3 +39,8 @@ __pycache__/
 *.tmp
 Thumbs.db
 desktop.ini
+
+# This repository is the production MCU firmware only. Test firmware and the
+# PC host application live in sibling directories and must not be copied here.
+Host/
+Tools/

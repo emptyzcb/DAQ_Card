@@ -23,23 +23,9 @@
 #include "spi.h"
 #include "usart.h"
 #include "gpio.h"
-#include "rs485_uart.h"
-#include "FreeRTOS.h"
-#include "task.h"
-#include "Task_modbus_rtu.h"
-#include "Task_io_logic.h"
-#include "digital_io_service.h"
-#include "bsp_digital_io.h"
-#include "io_config_storage.h"
-#include "ad7606_service.h"
-#include "bsp_ad7606.h"
-#include "bsp_console.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdio.h>
-#include <string.h>
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -67,149 +53,6 @@
 void SystemClock_Config(void);
 static void MPU_Config(void);
 void MX_FREERTOS_Init(void);
-void Task_ad7606(void *arg);
-
-#if APP_AD7606_DIAGNOSTIC_ONLY
-static void AD7606_Diagnostic_Run(void)
-{
-  BSP_AD7606_BusyTrace trace;
-  char line[192];
-  int length;
-
-  BSP_CONSOLE_Init();
-  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-  DWT->CYCCNT = 0U;
-  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-  BSP_AD7606_Init(BSP_AD7606_RANGE_10V, BSP_AD7606_OS_NONE);
-  HAL_Delay(100U);
-  BSP_AD7606_Reset();
-  HAL_Delay(10U);
-
-  (void)BSP_CONSOLE_Write((const uint8_t *)
-    "\r\n[AD7606-DIAG] standalone mode: no RTOS, RS485 or Modbus\r\n",
-    (uint16_t)(sizeof("\r\n[AD7606-DIAG] standalone mode: no RTOS, RS485 or Modbus\r\n") - 1U));
-
-  for (;;)
-  {
-    memset(&trace, 0, sizeof(trace));
-    BSP_AD7606_RunBusyTrace(&trace);
-    length = snprintf(line, sizeof(line),
-      "[AD7606-DIAG] idle=%u conv_low=%u conv_high=%u busy_seen=%lu scan=%lu wait=%lu high=%lu core=%luHz\r\n",
-      (unsigned int)trace.busy_before,
-      (unsigned int)trace.convst_low_readback,
-      (unsigned int)trace.convst_high_readback,
-      (unsigned long)trace.busy_seen,
-      (unsigned long)trace.scan_cycles,
-      (unsigned long)trace.busy_wait_cycles,
-      (unsigned long)trace.busy_high_cycles,
-      (unsigned long)SystemCoreClock);
-    if ((length > 0) && (length < (int)sizeof(line)))
-    {
-      (void)BSP_CONSOLE_Write((const uint8_t *)line, (uint16_t)length);
-    }
-    HAL_Delay(1000U);
-  }
-}
-#endif
-
-#if APP_RS485_TX_LOG_ONLY
-static void RS485_TxLog_Test_Run(void)
-{
-  static const uint8_t message[] = "RS485 TX TEST: USART1 link alive\r\n";
-
-  for (;;)
-  {
-    HAL_GPIO_WritePin(RS485_DIR_GPIO_Port, RS485_DIR_Pin, RS485_DIR_TX);
-    (void)HAL_UART_Transmit(&huart1,
-                            (uint8_t *)message,
-                            (uint16_t)(sizeof(message) - 1U),
-                            1000U);
-    HAL_GPIO_WritePin(RS485_DIR_GPIO_Port, RS485_DIR_Pin, RS485_DIR_RX);
-    HAL_Delay(1000U);
-  }
-}
-#endif
-
-#if APP_RS485_RX_LED_ONLY
-static void RS485_RxLed_Test_Run(void)
-{
-  uint8_t frame[RS485_UART_FRAME_MAX_SIZE];
-  uint16_t frame_length;
-  uint32_t last_rx_tick = 0U;
-
-  RS485_UART_Init();
-
-  for (;;)
-  {
-    uint32_t now = HAL_GetTick();
-
-    frame_length = 0U;
-    if (RS485_UART_TryReceiveFrame(frame,
-                                   (uint16_t)sizeof(frame),
-                                   &frame_length) > 0)
-    {
-      last_rx_tick = now;
-      HAL_GPIO_WritePin(PA0_LED_GPIO_Port, PA0_LED_Pin, PA0_LED_ON);
-    }
-
-    if ((last_rx_tick == 0U) || ((now - last_rx_tick) >= 1500U))
-    {
-      HAL_GPIO_WritePin(PA0_LED_GPIO_Port, PA0_LED_Pin, PA0_LED_OFF);
-    }
-
-    HAL_Delay(1U);
-  }
-}
-#endif
-
-#if APP_RS485_MINIMAL_MODBUS_ONLY
-static void RS485_MinimalModbus_Test_Run(void)
-{
-  osKernelInitialize();
-  RS485_UART_Init();
-  BSP_CONSOLE_Init();
-  DIGITAL_IO_SERVICE_Init();
-  DIGITAL_IO_SERVICE_AllOutputsOff();
-  IO_CONFIG_Init();
-  AD7606_SERVICE_Init();
-
-  if (xTaskCreate(Task_modbus_rtu,
-                  "Task_modbus_rtu",
-                  512U,
-                  NULL,
-                  4U,
-                  NULL) != pdPASS)
-  {
-    Error_Handler();
-  }
-
-  if (xTaskCreate(Task_io_logic,
-                  "Task_io_logic",
-                  512U,
-                  NULL,
-                  3U,
-                  NULL) != pdPASS)
-  {
-    Error_Handler();
-  }
-
-  if (xTaskCreate(Task_ad7606,
-                  "Task_ad7606",
-                  512U,
-                  NULL,
-                  3U,
-                  NULL) != pdPASS)
-  {
-    Error_Handler();
-  }
-
-  osKernelStart();
-
-  for (;;)
-  {
-  }
-}
-#endif
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -244,34 +87,13 @@ int main(void)
 
   /* USER CODE END SysInit */
 
-  /* Initialize only USART1 for the temporary RS485 path test. */
-#if APP_AD7606_DIAGNOSTIC_ONLY
-  MX_USART2_UART_Init();
-  AD7606_Diagnostic_Run();
-#elif APP_RS485_TX_LOG_ONLY
-  MX_GPIO_Init();
-  MX_USART1_UART_Init();
-  RS485_TxLog_Test_Run();
-#elif APP_RS485_RX_LED_ONLY
-  MX_GPIO_Init();
-  MX_USART1_UART_Init();
-  RS485_RxLed_Test_Run();
-#elif APP_RS485_MINIMAL_MODBUS_ONLY
-  MX_GPIO_Init();
-  MX_USART1_UART_Init();
-  MX_USART2_UART_Init();
-  RS485_MinimalModbus_Test_Run();
-#else
-  /* Initialize all configured peripherals */
+  /* Initialize the complete production hardware set before starting RTOS. */
   MX_GPIO_Init();
   MX_SPI1_Init();
   MX_USART2_UART_Init();
-  MX_USART1_UART_Init();  /* RS485: keep enabled in normal mode too (TX/RX swapped) */
+  MX_USART1_UART_Init();
   MX_USART3_UART_Init();
   MX_FDCAN1_Init();
-  DIGITAL_IO_SERVICE_Init();
-  DIGITAL_IO_SERVICE_AllOutputsOff();
-  IO_CONFIG_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -295,7 +117,6 @@ int main(void)
   /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
-#endif
 }
 
 /**
