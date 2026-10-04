@@ -70,8 +70,20 @@ typedef struct
 {
     uint32_t seq;             /* 发布序号，每发布一次完整快照加1 */
     uint32_t timestamp_ms;    /* 快照生成时的系统毫秒时间 */
-    uint16_t input_mask;      /* 8路数字输入有效状态 */
+    uint16_t input_mask;      /* 8路数字输入当前逻辑状态 */
+    uint16_t normal_input_mask; /* X3~X5消抖后的普通输入状态 */
     uint16_t output_mask;     /* 4路继电器和4路晶体管的打开状态 */
+    uint16_t reserved;
+    uint64_t pulse_count[2];  /* X1~X2累计脉冲数，64位防止长期运行溢出 */
+    uint32_t pulse_frequency_hz[2]; /* X1~X2最近100 ms窗口频率 */
+    int32_t encoder_position; /* X6/X7 A/B四倍频累计位置 */
+    int32_t encoder_speed_cps; /* 编码器速度，单位：count/s */
+    int32_t encoder_index_position; /* 最近一次X8/Z相到达时的位置 */
+    uint32_t encoder_index_count; /* Z相索引累计次数 */
+    uint32_t encoder_error_count; /* A/B非法跳变累计次数 */
+    int8_t encoder_direction; /* 1=正向，-1=反向，0=未运动 */
+    uint8_t encoder_ab_state; /* 当前A/B相逻辑状态 */
+    uint16_t status_flags;    /* bit0：高速脉冲计数器初始化成功 */
 } DataHubDigitalIoData;
 
 /*

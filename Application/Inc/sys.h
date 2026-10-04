@@ -32,8 +32,10 @@ extern "C" {
 #include "bsp_console.h"
 #include "bsp_ad7606.h"
 #include "bsp_digital_io.h"
+#include "bsp_encoder_input.h"
 #include "bsp_imu660rc.h"
 #include "bsp_led.h"
+#include "bsp_pulse_counter.h"
 #include "bsp_sensor.h"
 
 #include "ad7606_service.h"

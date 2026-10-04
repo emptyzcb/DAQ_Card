@@ -22,6 +22,7 @@
 #include "stm32h7xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "bsp_encoder_input.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -160,6 +161,42 @@ void DebugMon_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32h7xx.s).                    */
 /******************************************************************************/
+
+/**
+  * @brief This function handles EXTI line 0 for encoder channel A (X6/PB0).
+  */
+void EXTI0_IRQHandler(void)
+{
+  if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_0) != 0U)
+  {
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_0);
+    BSP_ENCODER_INPUT_HandleExti(GPIO_PIN_0);
+  }
+}
+
+/**
+  * @brief This function handles EXTI line 1 for encoder channel B (X7/PB1).
+  */
+void EXTI1_IRQHandler(void)
+{
+  if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_1) != 0U)
+  {
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_1);
+    BSP_ENCODER_INPUT_HandleExti(GPIO_PIN_1);
+  }
+}
+
+/**
+  * @brief This function handles EXTI line 8 for encoder index Z (X8/PE8).
+  */
+void EXTI9_5_IRQHandler(void)
+{
+  if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_8) != 0U)
+  {
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_8);
+    BSP_ENCODER_INPUT_HandleExti(GPIO_PIN_8);
+  }
+}
 
 /**
   * @brief This function handles FDCAN1 interrupt 0.

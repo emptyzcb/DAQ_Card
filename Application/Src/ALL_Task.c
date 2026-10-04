@@ -18,7 +18,7 @@
 #define APP_TASK_AD7606_STACK_DEPTH        512U
 #define APP_TASK_AD7606_PRIORITY           3U
 #define APP_TASK_DIGITAL_IO_STACK_DEPTH    256U
-#define APP_TASK_DIGITAL_IO_PRIORITY       2U
+#define APP_TASK_DIGITAL_IO_PRIORITY       3U
 
 static TaskHandle_t g_attitude_task_handle;
 static TaskHandle_t g_modbus_task_handle;
@@ -73,9 +73,10 @@ BaseType_t APP_TASKS_Create(void)
   if (result != pdPASS) { return pdFAIL; }
 
   /*
-   * Digital IO task: supervises the eight isolated inputs and output state.
-   * Input/output: digital IO service. Period: 50 ms. It is background work,
-   * so it runs below protocol, acquisition and rule-processing tasks.
+   * Digital IO task: extends the X1/X2 hardware counters, debounces X3-X5,
+   * snapshots the X6-X8 encoder and publishes the complete input state.
+   * Period: 1 ms. Priority 3 guarantees bounded service of 16-bit counters;
+   * pulse edges themselves are counted in hardware and do not depend on it.
    */
   result = xTaskCreate(AppTask_DigitalIo, "digital_io",
                        APP_TASK_DIGITAL_IO_STACK_DEPTH, NULL,

@@ -7,8 +7,10 @@ void AppTask_IoLogic(void *argument)
 
   for (;;)
   {
-    uint16_t input_mask = DIGITAL_IO_SERVICE_ReadInputs();
-    IO_LOGIC_ENGINE_Step(input_mask, HAL_GetTick());
+    DataHubDigitalIoData digital_io;
+
+    DataHub_GetDigitalIo(&digital_io);
+    IO_LOGIC_ENGINE_Step(digital_io.input_mask, HAL_GetTick());
     vTaskDelay(pdMS_TO_TICKS(10U));
   }
 }

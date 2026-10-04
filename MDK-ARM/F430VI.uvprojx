@@ -661,6 +661,26 @@
               <FilePath>../BSP/Inc/bsp_digital_io.h</FilePath>
             </File>
             <File>
+              <FileName>bsp_pulse_counter.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../BSP/Src/bsp_pulse_counter.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_pulse_counter.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../BSP/Inc/bsp_pulse_counter.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_encoder_input.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../BSP/Src/bsp_encoder_input.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_encoder_input.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../BSP/Inc/bsp_encoder_input.h</FilePath>
+            </File>
+            <File>
               <FileName>board_pins.h</FileName>
               <FileType>5</FileType>
               <FilePath>../BSP/Inc/board_pins.h</FilePath>
