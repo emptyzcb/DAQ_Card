@@ -75,6 +75,7 @@ PC 上位机源码和可执行文件只保存在：
 | BMI270/IMU | `bsp_imu660rc.c`、`imu_service.c` | 已实现 | 驱动和姿态任务已接入，需整理最终硬件验证记录 |
 | 姿态解算 | `Algorithm`、`Task_att_est.c` | 已实现 | 互补滤波/四元数接口已接入 DataHub |
 | CAN | `can_service.c` | 待硬件验证 | 正式模式仅接收与按接口发送，不再自动回显 |
+| W25Q128 QSPI Flash | `bsp_w25q128.c` | 已验证 | JEDEC ID `EF 40 18`；正式工程已接入无损初始化、型号校验和状态查询 |
 | 系统心跳 LED | `led_blink.c` | 已实现 | PA0 高电平点亮，500 ms 翻转一次 |
 
 ## 6. Modbus 正式寄存器

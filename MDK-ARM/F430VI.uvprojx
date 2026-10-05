@@ -681,6 +681,16 @@
               <FilePath>../BSP/Inc/bsp_encoder_input.h</FilePath>
             </File>
             <File>
+              <FileName>bsp_w25q128.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../BSP/Src/bsp_w25q128.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_w25q128.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../BSP/Inc/bsp_w25q128.h</FilePath>
+            </File>
+            <File>
               <FileName>board_pins.h</FileName>
               <FileType>5</FileType>
               <FilePath>../BSP/Inc/board_pins.h</FilePath>
@@ -904,6 +914,11 @@
               <FileName>stm32h7xx_hal.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32h7xx_hal_qspi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_qspi.c</FilePath>
             </File>
             <File>
               <FileName>stm32h7xx_hal_i2c.c</FileName>

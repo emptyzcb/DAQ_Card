@@ -37,6 +37,7 @@ extern "C" {
 #include "bsp_led.h"
 #include "bsp_pulse_counter.h"
 #include "bsp_sensor.h"
+#include "bsp_w25q128.h"
 
 #include "ad7606_service.h"
 #include "can_service.h"
