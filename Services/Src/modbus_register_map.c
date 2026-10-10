@@ -3,6 +3,8 @@
 #include "datahub.h"
 #include "digital_io_service.h"
 #include "ad7606_service.h"
+#include "rs485_uart.h"
+#include "io_logic_engine.h"
 
 static int16_t modbus_scale_angle(float degrees)
 {
@@ -182,6 +184,69 @@ int MODBUS_REGISTER_ReadHolding(uint16_t address, uint16_t *value)
         if (digital_io.encoder_direction > 0) *value |= 0x0100U;
         if (digital_io.encoder_direction < 0) *value |= 0x0200U;
         break;
+    }
+    return 1;
+  }
+
+  /*
+   * RS485 link statistics (read-only), 0x0060..0x0063.
+   * Cumulative counters maintained by the RS485 service since startup.
+   * This block is independent of the digital IO counters at 0x0040..0x0058
+   * and reports the physical Modbus link health to the host.
+   */
+  if ((address >= 0x0060U) && (address < 0x0064U))
+  {
+    RS485_UART_Stats stats;
+
+    RS485_UART_GetStats(&stats);
+    switch (address - 0x0060U)
+    {
+      case 0U: *value = (uint16_t)(stats.rx_frames & 0xFFFFU); break;
+      case 1U: *value = (uint16_t)(stats.bad_frames & 0xFFFFU); break;
+      case 2U: *value = (uint16_t)(stats.dropped & 0xFFFFU); break;
+      default: *value = (uint16_t)(stats.tx_frames & 0xFFFFU); break;
+    }
+    return 1;
+  }
+
+  /*
+   * 联合控制器实时数据 (read-only), 0x0070..0x007B.
+   * 由字节码虚拟机与数字IO服务联合提供，上位机联合控制器观测页面读取。
+   *  0x0070/0x0071 : DI1 累计脉冲数（低/高 16 位）
+   *  0x0072/0x0073 : DI2 累计脉冲数（低/高 16 位）
+   *  0x0074        : DI1 实时频率（Hz）
+   *  0x0075        : DI2 实时频率（Hz）
+   *  0x0076        : 鉴频档位（高 8 位=DI2，低 8 位=DI1）
+   *  0x0077        : 运行状态(高8) | 外部模式(bit4~7) | 当前模式(低4位)
+   *  0x0078        : 输入掩码
+   *  0x0079        : 状态标志（VM 故障 | 数字IO 状态）
+   *  0x007A        : 模拟量输出电压（mV）
+   *  0x007B        : 模拟量输出电流（uA）
+   */
+  if ((address >= 0x0070U) && (address <= 0x007BU))
+  {
+    DataHub_GetDigitalIo(&digital_io);
+    switch (address)
+    {
+      case 0x0070U: *value = (uint16_t)(digital_io.pulse_count[0] & 0xFFFFU); break;
+      case 0x0071U: *value = (uint16_t)((digital_io.pulse_count[0] >> 16) & 0xFFFFU); break;
+      case 0x0072U: *value = (uint16_t)(digital_io.pulse_count[1] & 0xFFFFU); break;
+      case 0x0073U: *value = (uint16_t)((digital_io.pulse_count[1] >> 16) & 0xFFFFU); break;
+      case 0x0074U: *value = (uint16_t)digital_io.pulse_frequency_hz[0]; break;
+      case 0x0075U: *value = (uint16_t)digital_io.pulse_frequency_hz[1]; break;
+      case 0x0076U:
+        *value = (uint16_t)((IO_LOGIC_ENGINE_GetFreqClass(1U) << 8) |
+                            IO_LOGIC_ENGINE_GetFreqClass(0U));
+        break;
+      case 0x0077U:
+        *value = (uint16_t)((IO_LOGIC_ENGINE_GetRunState() << 8) |
+                            (DIGITAL_IO_SERVICE_GetExternalMode() << 4) |
+                            IO_LOGIC_ENGINE_GetCurrentMode());
+        break;
+      case 0x0078U: *value = digital_io.input_mask; break;
+      case 0x0079U: *value = (uint16_t)(IO_LOGIC_ENGINE_GetStatusFlags() | digital_io.status_flags); break;
+      case 0x007AU: *value = IO_LOGIC_ENGINE_GetAoVoltageMv(); break;
+      default:      *value = IO_LOGIC_ENGINE_GetAoCurrentUa(); break;
     }
     return 1;
   }

@@ -44,3 +44,6 @@ desktop.ini
 # PC host application live in sibling directories and must not be copied here.
 Host/
 Tools/
+
+# Local build/test logs
+*.log

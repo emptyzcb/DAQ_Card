@@ -75,6 +75,21 @@ void Error_Handler(void);
 #define RS485_DIR_TX GPIO_PIN_SET
 #define RS485_DIR_RX GPIO_PIN_RESET
 
+/*
+ * RS485 communication diagnostic LED (PA0).
+ *  - OFF   : no valid RS485 frame received within the watchdog window.
+ *  - ON    : the last received frame passed Modbus validation.
+ *  - BLINK : the last received frame failed validation (CRC/address/length).
+ * Set to 0U to disable the LED service and its per-frame bookkeeping overhead.
+ */
+#define RS485_COMM_LED_DIAGNOSTIC 1U
+
+/*
+ * 固件版本号（联合控制器平台化移植 V1.0.0 起）。
+ * 每次修改固件后递增，串口启动日志打印以便上位机确认烧录版本。
+ */
+#define APP_FIRMWARE_VERSION   "V1.1.0"
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

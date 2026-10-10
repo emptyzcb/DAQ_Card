@@ -7,14 +7,15 @@ typedef struct
 } BSP_DIGITAL_IO_PinDef;
 
 static const BSP_DIGITAL_IO_PinDef input_pins[BSP_DIGITAL_IO_INPUT_COUNT] = {
-  { BOARD_SWITCH_X1_GPIO_Port, BOARD_SWITCH_X1_Pin },
-  { BOARD_SWITCH_X2_GPIO_Port, BOARD_SWITCH_X2_Pin },
-  { BOARD_SWITCH_X3_GPIO_Port, BOARD_SWITCH_X3_Pin },
-  { BOARD_SWITCH_X4_GPIO_Port, BOARD_SWITCH_X4_Pin },
-  { BOARD_SWITCH_X5_GPIO_Port, BOARD_SWITCH_X5_Pin },
-  { BOARD_SWITCH_X6_GPIO_Port, BOARD_SWITCH_X6_Pin },
-  { BOARD_SWITCH_X7_GPIO_Port, BOARD_SWITCH_X7_Pin },
-  { BOARD_SWITCH_X8_GPIO_Port, BOARD_SWITCH_X8_Pin }
+  /* 板上端子从左到右，对应原理图连接器P3从下到上。 */
+  { BOARD_SWITCH_X4_GPIO_Port, BOARD_SWITCH_X4_Pin }, /* IN1 */
+  { BOARD_SWITCH_X3_GPIO_Port, BOARD_SWITCH_X3_Pin }, /* IN2 */
+  { BOARD_SWITCH_X2_GPIO_Port, BOARD_SWITCH_X2_Pin }, /* IN3 */
+  { BOARD_SWITCH_X1_GPIO_Port, BOARD_SWITCH_X1_Pin }, /* IN4 */
+  { BOARD_SWITCH_X8_GPIO_Port, BOARD_SWITCH_X8_Pin }, /* IN5 */
+  { BOARD_SWITCH_X7_GPIO_Port, BOARD_SWITCH_X7_Pin }, /* IN6 */
+  { BOARD_SWITCH_X6_GPIO_Port, BOARD_SWITCH_X6_Pin }, /* IN7 */
+  { BOARD_SWITCH_X5_GPIO_Port, BOARD_SWITCH_X5_Pin }  /* IN8 */
 };
 
 static const BSP_DIGITAL_IO_PinDef output_pins[BSP_DIGITAL_IO_OUTPUT_COUNT] = {
@@ -29,18 +30,19 @@ static const BSP_DIGITAL_IO_PinDef output_pins[BSP_DIGITAL_IO_OUTPUT_COUNT] = {
 };
 
 /*
- * 这里描述的是板级电路的真实有效电平。上层只使用“打开/关闭”
- * 逻辑语义，不应感知继电器低有效、晶体管高有效的硬件差异。
+ * 板级电路真实有效电平：DO1~DO4 继电器低电平导通（低=打开）；
+ * DO5~DO8 晶体管低边驱动，实测低电平导通（低=打开）。
+ * 上层只使用“打开/关闭”逻辑语义，不应感知硬件电平差异。
  */
 static const GPIO_PinState output_active_levels[BSP_DIGITAL_IO_OUTPUT_COUNT] = {
   GPIO_PIN_RESET,
   GPIO_PIN_RESET,
   GPIO_PIN_RESET,
   GPIO_PIN_RESET,
-  GPIO_PIN_SET,
-  GPIO_PIN_SET,
-  GPIO_PIN_SET,
-  GPIO_PIN_SET
+  GPIO_PIN_RESET,
+  GPIO_PIN_RESET,
+  GPIO_PIN_RESET,
+  GPIO_PIN_RESET
 };
 
 static uint16_t output_state_mask;

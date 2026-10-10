@@ -26,6 +26,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "sys.h"
+#include <stdio.h>
 
 
 /* USER CODE END Includes */
@@ -127,6 +128,13 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
   (void)argument;
+
+  /*
+   * 固件版本打印（USART 重定向输出）。
+   * 上位机以此确认烧录固件版本，须与 Core/Inc/main.h 中
+   * APP_FIRMWARE_VERSION 保持一致。
+   */
+  printf("Project start ok! FW=%s\r\n", APP_FIRMWARE_VERSION);
 
   /*
    * System indicator task. The LED service provides a non-blocking heartbeat;

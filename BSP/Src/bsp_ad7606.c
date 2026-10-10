@@ -2,6 +2,7 @@
 
 static BSP_AD7606_Range active_range = BSP_AD7606_RANGE_10V;
 
+
 static void ad7606_delay_cycles(uint32_t cycles)
 {
   volatile uint32_t index;

@@ -9,6 +9,10 @@ static uint8_t normal_debounce_count[3];
 static uint16_t pulse_previous_counter[2];
 static uint32_t pulse_window_count[2];
 static uint32_t pulse_window_start_ms;
+static uint32_t pulse_last_tick[2];      /* 各通道最近一次脉冲时刻，用于无脉冲超时判定 */
+static uint8_t ext_mode_stable;          /* 外部模式编码稳定值（DI3~DI6） */
+static uint8_t ext_mode_pending;         /* 外部模式编码候选值 */
+static uint32_t ext_mode_change_tick;    /* 候选值起始时刻 */
 static int32_t encoder_window_position;
 static uint32_t encoder_window_start_ms;
 
@@ -65,6 +69,10 @@ static void digital_io_process_pulse_counters(uint32_t now_ms)
     pulse_previous_counter[channel] = current;
     digital_input_state.pulse_count[channel] += delta;
     pulse_window_count[channel] += delta;
+    if (delta > 0U)
+    {
+      pulse_last_tick[channel] = now_ms; /* 记录最近脉冲时刻（硬件计数增量检测） */
+    }
   }
 
   if ((uint32_t)(now_ms - pulse_window_start_ms) >= DIGITAL_IO_RATE_WINDOW_MS)
@@ -131,6 +139,13 @@ void DIGITAL_IO_SERVICE_Init(void)
   pulse_previous_counter[0] = BSP_PULSE_COUNTER_Read(BSP_PULSE_COUNTER_X1);
   pulse_previous_counter[1] = BSP_PULSE_COUNTER_Read(BSP_PULSE_COUNTER_X2);
   pulse_window_start_ms = digital_input_state.timestamp_ms;
+  memset(pulse_last_tick, 0, sizeof(pulse_last_tick));
+
+  /* 外部模式编码初始值按当前输入电平直接建立（无历史状态）。 */
+  ext_mode_stable = (uint8_t)((raw_mask >> 2U) & 0x0FU);
+  ext_mode_pending = ext_mode_stable;
+  ext_mode_change_tick = digital_input_state.timestamp_ms;
+
   encoder_window_start_ms = digital_input_state.timestamp_ms;
   encoder_window_position = 0;
 
@@ -162,6 +177,26 @@ void DIGITAL_IO_SERVICE_ProcessInputs(uint32_t now_ms)
       (uint16_t)((raw_mask & (DIGITAL_IO_SERVICE_PULSE_INPUT_MASK |
                               DIGITAL_IO_SERVICE_ENCODER_INPUT_MASK)) |
                  digital_input_state.normal_input_mask);
+
+  /* 外部模式编码（DI3~DI6，bit2~bit5）：20ms 稳定确认后生效，
+   * 供字节码虚拟机 OP_SET_MODE_EXT / 模式比较指令使用。 */
+  {
+    uint8_t raw_mode = (uint8_t)((digital_input_state.input_mask >> 2U) & 0x0FU);
+    if (raw_mode != ext_mode_stable)
+    {
+      if ((raw_mode == ext_mode_pending) &&
+          ((uint32_t)(now_ms - ext_mode_change_tick) >= DIGITAL_IO_SERVICE_MODE_SETTLE_MS))
+      {
+        ext_mode_stable = raw_mode;
+      }
+      else
+      {
+        ext_mode_pending = raw_mode;
+        ext_mode_change_tick = now_ms;
+      }
+    }
+  }
+
   digital_input_state.output_mask = BSP_DIGITAL_IO_GetOutputMask();
   digital_input_state.timestamp_ms = now_ms;
 
@@ -191,6 +226,40 @@ uint16_t DIGITAL_IO_SERVICE_ReadInputs(void)
   }
 
   return digital_input_state.input_mask;
+}
+
+uint32_t DIGITAL_IO_SERVICE_GetFrequencyHz(uint8_t channel)
+{
+  if ((digital_io_diag.initialized == 0U) || (channel >= 2U))
+  {
+    return 0U;
+  }
+
+  return digital_input_state.pulse_frequency_hz[channel];
+}
+
+uint32_t DIGITAL_IO_SERVICE_GetLastPulseAgeMs(uint8_t channel, uint32_t now_ms)
+{
+  if ((digital_io_diag.initialized == 0U) || (channel >= 2U))
+  {
+    return 0xFFFFFFFFUL;
+  }
+
+  if (pulse_last_tick[channel] == 0U)
+  {
+    return 0xFFFFFFFFUL; /* 上电后从未收到脉冲 */
+  }
+  return (uint32_t)(now_ms - pulse_last_tick[channel]);
+}
+
+uint8_t DIGITAL_IO_SERVICE_GetExternalMode(void)
+{
+  if (digital_io_diag.initialized == 0U)
+  {
+    return 0U;
+  }
+
+  return ext_mode_stable;
 }
 
 int DIGITAL_IO_SERVICE_ReadInput(BSP_DIGITAL_IO_Input input)

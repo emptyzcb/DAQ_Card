@@ -26,11 +26,13 @@ extern "C" {
 #include "Task_digital_io.h"
 #include "Task_modbus_rtu.h"
 #include "Task_io_logic.h"
+#include "Task_eth.h"
 #include "platform.h"
 
 #include "board_pins.h"
 #include "bsp_console.h"
 #include "bsp_ad7606.h"
+#include "bsp_analog_output.h"
 #include "bsp_digital_io.h"
 #include "bsp_encoder_input.h"
 #include "bsp_imu660rc.h"
@@ -38,6 +40,7 @@ extern "C" {
 #include "bsp_pulse_counter.h"
 #include "bsp_sensor.h"
 #include "bsp_w25q128.h"
+#include "bsp_w5500.h"
 
 #include "ad7606_service.h"
 #include "can_service.h"

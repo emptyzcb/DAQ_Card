@@ -21,11 +21,26 @@ void AppTask_ModbusRtu(void *argument)
                                                            response,
                                                            (uint16_t)sizeof(response));
 
+      /*
+       * A normal Modbus response echoes the request function code, while an
+       * exception response sets bit 7. Use this to mark the frame as valid
+       * or invalid for the link statistics and the PA0 diagnostic LED.
+       */
+      RS485_UART_DiagnosticMarkFrame((response_length > 1U) &&
+                                     (response[1] == request[1]));
+
       if (response_length > 0U)
       {
         (void)RS485_UART_Send(response, response_length, 100U);
       }
     }
+    else if (receive_result < 0)
+    {
+      /* Capacity error: the received frame exceeds the request buffer. */
+      RS485_UART_DiagnosticMarkFrame(0U);
+    }
+
+    RS485_UART_DiagnosticProcess();
     vTaskDelay(pdMS_TO_TICKS(1U));
   }
 }

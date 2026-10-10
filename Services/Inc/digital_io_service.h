@@ -12,6 +12,17 @@
 #define DIGITAL_IO_SERVICE_PULSE_INPUT_MASK   0x0003U /* bit0~bit1：X1~X2高速脉冲输入 */
 #define DIGITAL_IO_SERVICE_ENCODER_INPUT_MASK 0x00E0U /* bit5~bit7：X6(A)~X8(Z)编码器输入 */
 
+/* 频率档位定义（由字节码虚拟机依据程序内阈值计算，服务层只提供裸数据） */
+#define DIGITAL_IO_SERVICE_FREQ_CLASS_NONE     0U /* 无脉冲/未配置阈值 */
+#define DIGITAL_IO_SERVICE_FREQ_CLASS_LOW      1U /* 低于低频阈值 */
+#define DIGITAL_IO_SERVICE_FREQ_CLASS_NORMAL   2U /* 正常区间 */
+#define DIGITAL_IO_SERVICE_FREQ_CLASS_HIGH     3U /* 高于高频阈值 */
+#define DIGITAL_IO_SERVICE_FREQ_CLASS_OVER     4U /* 超量程（≥规格上限 2000Hz） */
+
+/* 外部模式编码（DI3~DI6）稳定确认时间：20ms */
+#define DIGITAL_IO_SERVICE_MODE_SETTLE_MS      20U
+#define DIGITAL_IO_SERVICE_MODE_COUNT          16U
+
 /*
  * 数字IO服务完整输入快照。
  *
@@ -62,6 +73,15 @@ void DIGITAL_IO_SERVICE_GetInputState(DIGITAL_IO_SERVICE_InputState *state);
 
 /* 返回8路输入逻辑状态位掩码：bit0~bit7对应X1~X8。 */
 uint16_t DIGITAL_IO_SERVICE_ReadInputs(void);
+
+/* 返回指定通道实时频率（最近100ms窗口，单位Hz）；channel：0=DI1，1=DI2。 */
+uint32_t DIGITAL_IO_SERVICE_GetFrequencyHz(uint8_t channel);
+
+/* 返回距最近一次脉冲的毫秒数，用于无脉冲超时判定；channel：0=DI1，1=DI2。 */
+uint32_t DIGITAL_IO_SERVICE_GetLastPulseAgeMs(uint8_t channel, uint32_t now_ms);
+
+/* 返回外部模式编码（DI3~DI6，20ms稳定确认后的值，0~15）。 */
+uint8_t DIGITAL_IO_SERVICE_GetExternalMode(void);
 
 /* 返回指定输入的逻辑状态：1=有效，0=无效或参数非法。 */
 int DIGITAL_IO_SERVICE_ReadInput(BSP_DIGITAL_IO_Input input);

@@ -611,6 +611,16 @@
               <FilePath>..\Application\Inc\Task_ad7606.h</FilePath>
             </File>
             <File>
+              <FileName>Task_eth.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Application\Src\Task_eth.c</FilePath>
+            </File>
+            <File>
+              <FileName>Task_eth.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Application\Inc\Task_eth.h</FilePath>
+            </File>
+            <File>
               <FileName>sys.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Application/Src/sys.c</FilePath>
@@ -651,6 +661,16 @@
               <FilePath>../BSP/Inc/bsp_ad7606.h</FilePath>
             </File>
             <File>
+              <FileName>bsp_analog_output.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../BSP/Src/bsp_analog_output.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_analog_output.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../BSP/Inc/bsp_analog_output.h</FilePath>
+            </File>
+            <File>
               <FileName>bsp_digital_io.c</FileName>
               <FileType>1</FileType>
               <FilePath>../BSP/Src/bsp_digital_io.c</FilePath>
@@ -689,6 +709,16 @@
               <FileName>bsp_w25q128.h</FileName>
               <FileType>5</FileType>
               <FilePath>../BSP/Inc/bsp_w25q128.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_w5500.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../BSP/Src/bsp_w5500.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_w5500.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../BSP/Inc/bsp_w5500.h</FilePath>
             </File>
             <File>
               <FileName>board_pins.h</FileName>
@@ -879,6 +909,16 @@
               <FileName>stm32h7xx_hal_gpio.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_gpio.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32h7xx_hal_dac.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dac.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32h7xx_hal_dac_ex.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dac_ex.c</FilePath>
             </File>
             <File>
               <FileName>stm32h7xx_hal_hsem.c</FileName>

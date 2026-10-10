@@ -19,12 +19,15 @@
 #define APP_TASK_AD7606_PRIORITY           3U
 #define APP_TASK_DIGITAL_IO_STACK_DEPTH    256U
 #define APP_TASK_DIGITAL_IO_PRIORITY       3U
+#define APP_TASK_ETH_STACK_DEPTH           1024U
+#define APP_TASK_ETH_PRIORITY              2U
 
 static TaskHandle_t g_attitude_task_handle;
 static TaskHandle_t g_modbus_task_handle;
 static TaskHandle_t g_io_logic_task_handle;
 static TaskHandle_t g_ad7606_task_handle;
 static TaskHandle_t g_digital_io_task_handle;
+static TaskHandle_t g_eth_task_handle;
 
 BaseType_t APP_TASKS_Create(void)
 {
@@ -81,6 +84,17 @@ BaseType_t APP_TASKS_Create(void)
   result = xTaskCreate(AppTask_DigitalIo, "digital_io",
                        APP_TASK_DIGITAL_IO_STACK_DEPTH, NULL,
                        APP_TASK_DIGITAL_IO_PRIORITY, &g_digital_io_task_handle);
+  if (result != pdPASS) { return pdFAIL; }
+
+  /*
+   * Ethernet task: initialises the W5500, maintains a TCP server socket and
+   * echoes received frames for link verification. Period: 10 ms. Priority 2
+   * keeps network traffic below acquisition and protocol tasks; all SPI
+   * transactions are blocking and confined to this task.
+   */
+  result = xTaskCreate(AppTask_Eth, "eth",
+                       APP_TASK_ETH_STACK_DEPTH, NULL,
+                       APP_TASK_ETH_PRIORITY, &g_eth_task_handle);
   if (result != pdPASS) { return pdFAIL; }
 
   return pdPASS;
