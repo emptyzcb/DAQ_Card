@@ -88,7 +88,7 @@ void Error_Handler(void);
  * 固件版本号（联合控制器平台化移植 V1.0.0 起）。
  * 每次修改固件后递增，串口启动日志打印以便上位机确认烧录版本。
  */
-#define APP_FIRMWARE_VERSION   "V1.1.0"
+#define APP_FIRMWARE_VERSION   "V1.1.1"
 
 /* USER CODE END Private defines */
 

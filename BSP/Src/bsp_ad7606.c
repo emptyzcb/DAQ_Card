@@ -26,7 +26,8 @@ static void ad7606_gpio_init(void)
 
   ad7606_write(BSP_AD7606_CONVST_GPIO_Port, BSP_AD7606_CONVST_Pin, GPIO_PIN_SET);
   ad7606_write(BSP_AD7606_RESET_GPIO_Port, BSP_AD7606_RESET_Pin, GPIO_PIN_RESET);
-  ad7606_write(BSP_AD7606_SCLK_GPIO_Port, BSP_AD7606_SCLK_Pin, GPIO_PIN_RESET);
+  /* 串行读取的第一个有效采样沿必须为下降沿，因此时钟空闲时保持高电平。 */
+  ad7606_write(BSP_AD7606_SCLK_GPIO_Port, BSP_AD7606_SCLK_Pin, GPIO_PIN_SET);
   ad7606_write(BSP_AD7606_CS_GPIO_Port, BSP_AD7606_CS_Pin, GPIO_PIN_SET);
 
   gpio.Pin = BSP_AD7606_OS0_Pin | BSP_AD7606_OS1_Pin | BSP_AD7606_OS2_Pin |
@@ -72,7 +73,12 @@ static void ad7606_read_serial(int16_t raw[BSP_AD7606_CHANNEL_COUNT])
   uint16_t dout_b[4] = {0U};
   uint32_t bit;
 
-  ad7606_write(BSP_AD7606_SCLK_GPIO_Port, BSP_AD7606_SCLK_Pin, GPIO_PIN_RESET);
+  /*
+   * CS 拉低后芯片给出当前通道最高位；每次 SCLK 下降沿数据稳定，
+   * 在下降沿后读取 DOUTA/DOUTB，随后用上升沿移出下一位。
+   * 两根数据线各承载四个通道，每次转换共读取 64 个时钟。
+   */
+  ad7606_write(BSP_AD7606_SCLK_GPIO_Port, BSP_AD7606_SCLK_Pin, GPIO_PIN_SET);
   ad7606_write(BSP_AD7606_CS_GPIO_Port, BSP_AD7606_CS_Pin, GPIO_PIN_RESET);
   ad7606_delay_cycles(4U);
 
@@ -80,7 +86,7 @@ static void ad7606_read_serial(int16_t raw[BSP_AD7606_CHANNEL_COUNT])
   {
     uint32_t word = bit / 16U;
 
-    ad7606_write(BSP_AD7606_SCLK_GPIO_Port, BSP_AD7606_SCLK_Pin, GPIO_PIN_SET);
+    ad7606_write(BSP_AD7606_SCLK_GPIO_Port, BSP_AD7606_SCLK_Pin, GPIO_PIN_RESET);
     ad7606_delay_cycles(4U);
 
     dout_a[word] = (uint16_t)((dout_a[word] << 1) |
@@ -88,7 +94,7 @@ static void ad7606_read_serial(int16_t raw[BSP_AD7606_CHANNEL_COUNT])
     dout_b[word] = (uint16_t)((dout_b[word] << 1) |
       (HAL_GPIO_ReadPin(BSP_AD7606_DOUTB_GPIO_Port, BSP_AD7606_DOUTB_Pin) == GPIO_PIN_SET));
 
-    ad7606_write(BSP_AD7606_SCLK_GPIO_Port, BSP_AD7606_SCLK_Pin, GPIO_PIN_RESET);
+    ad7606_write(BSP_AD7606_SCLK_GPIO_Port, BSP_AD7606_SCLK_Pin, GPIO_PIN_SET);
     ad7606_delay_cycles(4U);
   }
 

@@ -169,6 +169,8 @@ int AD7606_SERVICE_SetConfig(const AD7606_SERVICE_Config *config)
   ad7606_config = *config;
   BSP_AD7606_SetRange(ad7606_config.range);
   BSP_AD7606_SetOversampling(ad7606_config.oversampling);
+  /* RANGE/OS 引脚更新后复位转换器，使下一次采样从确定的配置状态开始。 */
+  BSP_AD7606_Reset();
   ad7606_diag.state = AD7606_SERVICE_STATE_RUNNING;
   DataHub_UpdateAd7606Status(ad7606_diag.sample_count,
                              ad7606_diag.timeout_count,
