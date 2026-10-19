@@ -19,6 +19,9 @@ typedef struct
 
 static DAC_HandleTypeDef analog_dac;
 static BSP_ANALOG_OUTPUT_BreathState breath_state;
+static BSP_ANALOG_OUTPUT_BreathState current_breath_state;
+static uint16_t voltage_output_mv;
+static uint16_t current_output_ua;
 
 void HAL_DAC_MspInit(DAC_HandleTypeDef *hdac)
 {
@@ -70,7 +73,14 @@ void BSP_ANALOG_OUTPUT_SetCurrentUa(uint16_t current_ua)
 {
   uint32_t limited = current_ua > ANALOG_CURRENT_MAX_UA ?
                      ANALOG_CURRENT_MAX_UA : current_ua;
+  current_breath_state.active = 0U;
+  current_output_ua = (uint16_t)limited;
   analog_set_dac(DAC_CHANNEL_1, (limited * 165U) / 1000U);
+}
+
+uint16_t BSP_ANALOG_OUTPUT_GetCurrentUa(void)
+{
+  return current_output_ua;
 }
 
 void BSP_ANALOG_OUTPUT_SetVoltageMv(uint16_t voltage_mv)
@@ -78,7 +88,13 @@ void BSP_ANALOG_OUTPUT_SetVoltageMv(uint16_t voltage_mv)
   uint32_t limited = voltage_mv > ANALOG_VOLTAGE_MAX_MV ?
                      ANALOG_VOLTAGE_MAX_MV : voltage_mv;
   breath_state.active = 0U;
+  voltage_output_mv = (uint16_t)limited;
   analog_set_dac(DAC_CHANNEL_2, (limited * 51U) / 151U);
+}
+
+uint16_t BSP_ANALOG_OUTPUT_GetVoltageMv(void)
+{
+  return voltage_output_mv;
 }
 
 void BSP_ANALOG_OUTPUT_StartVoltageBreath(uint16_t minimum_mv,
@@ -99,6 +115,24 @@ void BSP_ANALOG_OUTPUT_StartVoltageBreath(uint16_t minimum_mv,
   breath_state.active = 1U;
 }
 
+void BSP_ANALOG_OUTPUT_StartCurrentBreath(uint16_t minimum_ua,
+                                         uint16_t maximum_ua,
+                                         uint16_t cycle_ms,
+                                         uint32_t now_ms)
+{
+  if ((minimum_ua > maximum_ua) || (maximum_ua > ANALOG_CURRENT_MAX_UA) ||
+      (cycle_ms < 20U)) return;
+  if ((current_breath_state.active != 0U) &&
+      (current_breath_state.minimum_mv == minimum_ua) &&
+      (current_breath_state.maximum_mv == maximum_ua) &&
+      (current_breath_state.cycle_ms == cycle_ms)) return;
+  current_breath_state.minimum_mv = minimum_ua;
+  current_breath_state.maximum_mv = maximum_ua;
+  current_breath_state.cycle_ms = cycle_ms;
+  current_breath_state.start_ms = now_ms;
+  current_breath_state.active = 1U;
+}
+
 void BSP_ANALOG_OUTPUT_Process(uint32_t now_ms)
 {
   uint32_t elapsed;
@@ -106,23 +140,41 @@ void BSP_ANALOG_OUTPUT_Process(uint32_t now_ms)
   uint32_t position;
   uint32_t shaped;
   uint32_t output_mv;
-  if (breath_state.active == 0U) return;
-  elapsed = (now_ms - breath_state.start_ms) % breath_state.cycle_ms;
-  half_cycle = breath_state.cycle_ms / 2U;
-  if (half_cycle == 0U) return;
-  position = (elapsed <= half_cycle) ?
-             ((elapsed * 1000U) / half_cycle) :
-             (((breath_state.cycle_ms - elapsed) * 1000U) / half_cycle);
-  if (position > 1000U) position = 1000U;
-  shaped = analog_smoothstep(position);
-  output_mv = breath_state.minimum_mv +
-              (((uint32_t)(breath_state.maximum_mv - breath_state.minimum_mv) * shaped) / 1000U);
-  analog_set_dac(DAC_CHANNEL_2, (output_mv * 51U) / 151U);
+  if (breath_state.active != 0U)
+  {
+    elapsed = (now_ms - breath_state.start_ms) % breath_state.cycle_ms;
+    half_cycle = breath_state.cycle_ms / 2U;
+    position = (elapsed <= half_cycle) ?
+               ((elapsed * 1000U) / half_cycle) :
+               (((breath_state.cycle_ms - elapsed) * 1000U) / half_cycle);
+    if (position > 1000U) position = 1000U;
+    shaped = analog_smoothstep(position);
+    output_mv = breath_state.minimum_mv +
+                (((uint32_t)(breath_state.maximum_mv - breath_state.minimum_mv) * shaped) / 1000U);
+    voltage_output_mv = (uint16_t)output_mv;
+    analog_set_dac(DAC_CHANNEL_2, (output_mv * 51U) / 151U);
+  }
+  if (current_breath_state.active != 0U)
+  {
+    elapsed = (now_ms - current_breath_state.start_ms) % current_breath_state.cycle_ms;
+    half_cycle = current_breath_state.cycle_ms / 2U;
+    position = (elapsed <= half_cycle) ?
+               ((elapsed * 1000U) / half_cycle) :
+               (((current_breath_state.cycle_ms - elapsed) * 1000U) / half_cycle);
+    if (position > 1000U) position = 1000U;
+    shaped = analog_smoothstep(position);
+    current_output_ua = (uint16_t)(current_breath_state.minimum_mv +
+        (((uint32_t)(current_breath_state.maximum_mv - current_breath_state.minimum_mv) * shaped) / 1000U));
+    analog_set_dac(DAC_CHANNEL_1, ((uint32_t)current_output_ua * 165U) / 1000U);
+  }
 }
 
 void BSP_ANALOG_OUTPUT_AllOff(void)
 {
   breath_state.active = 0U;
+  current_breath_state.active = 0U;
+  voltage_output_mv = 0U;
+  current_output_ua = 0U;
   analog_set_dac(DAC_CHANNEL_1, 0U);
   analog_set_dac(DAC_CHANNEL_2, 0U);
 }

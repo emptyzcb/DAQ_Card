@@ -328,7 +328,7 @@ int __io_putchar(int ch)
 {
   uint8_t data = (uint8_t)ch;
 
-  HAL_UART_Transmit(&huart2, &data, 1, HAL_MAX_DELAY);
+  (void)HAL_UART_Transmit(&huart2, &data, 1U, 10U);
 
   return ch;
 }

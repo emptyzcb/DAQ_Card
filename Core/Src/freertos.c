@@ -74,7 +74,11 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
+  printf("[BOOT] platform init start\r\n");
+  Boot_Diagnostic_SetStage(4U);
   APP_Init();
+  Boot_Diagnostic_SetStage(5U);
+  printf("[BOOT] platform init done\r\n");
 
   /* USER CODE END Init */
 
@@ -99,6 +103,7 @@ void MX_FREERTOS_Init(void) {
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
   if (defaultTaskHandle == NULL)
   {
+    printf("[BOOT] default task creation failed\r\n");
     Error_Handler();
   }
 
@@ -106,8 +111,10 @@ void MX_FREERTOS_Init(void) {
   /* Create the complete product task set before the scheduler can run. */
   if (APP_TASKS_Create() != pdPASS)
   {
+    printf("[BOOT] application task creation failed\r\n");
     Error_Handler();
   }
+  printf("[BOOT] all tasks created\r\n");
   
   /* USER CODE END RTOS_THREADS */
 
@@ -134,7 +141,9 @@ void StartDefaultTask(void *argument)
    * 上位机以此确认烧录固件版本，须与 Core/Inc/main.h 中
    * APP_FIRMWARE_VERSION 保持一致。
    */
-  printf("Project start ok! FW=%s\r\n", APP_FIRMWARE_VERSION);
+  printf("[BOOT] scheduler running FW=%s\r\n", APP_FIRMWARE_VERSION);
+  Boot_Diagnostic_SetStage(0U);
+  BSP_LED_On();
 
   /*
    * System indicator task. The LED service provides a non-blocking heartbeat;

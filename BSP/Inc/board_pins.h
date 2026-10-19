@@ -8,16 +8,6 @@
  * Keep these macros as the hardware source of truth for BSP adapters.
  */
 
-/* BMI270 IMU, shared SPI-style signal group */
-#define BOARD_BMI270_SCK_GPIO_Port          GPIOB
-#define BOARD_BMI270_SCK_Pin                GPIO_PIN_3
-#define BOARD_BMI270_MISO_GPIO_Port         GPIOB
-#define BOARD_BMI270_MISO_Pin               GPIO_PIN_4
-#define BOARD_BMI270_MOSI_GPIO_Port         GPIOB
-#define BOARD_BMI270_MOSI_Pin               GPIO_PIN_5
-#define BOARD_BMI270_CS_GPIO_Port           GPIOC
-#define BOARD_BMI270_CS_Pin                 GPIO_PIN_4
-
 /* Debug UART */
 #define BOARD_DEBUG_UART_TX_GPIO_Port       GPIOA
 #define BOARD_DEBUG_UART_TX_Pin             GPIO_PIN_2

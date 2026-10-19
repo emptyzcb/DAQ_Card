@@ -18,6 +18,17 @@ void BSP_ANALOG_OUTPUT_StartVoltageBreath(uint16_t minimum_mv,
                                          uint16_t cycle_ms,
                                          uint32_t now_ms);
 
+/* 启动非阻塞电流呼吸波，单位uA；重复相同参数不会重置相位。 */
+void BSP_ANALOG_OUTPUT_StartCurrentBreath(uint16_t minimum_ua,
+                                         uint16_t maximum_ua,
+                                         uint16_t cycle_ms,
+                                         uint32_t now_ms);
+
+uint16_t BSP_ANALOG_OUTPUT_GetCurrentUa(void);
+
+/* 最近一次送往电压输出通道的指令值，单位 mV（非端子实测值）。 */
+uint16_t BSP_ANALOG_OUTPUT_GetVoltageMv(void);
+
 /* 由10 ms IO逻辑任务周期调用，推进正在运行的模拟输出波形。 */
 void BSP_ANALOG_OUTPUT_Process(uint32_t now_ms);
 

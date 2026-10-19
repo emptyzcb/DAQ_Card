@@ -156,6 +156,9 @@ uint8_t BSP_W5500_ReadPhyCfg(void);
  */
 uint8_t BSP_W5500_RegRead(uint16_t offset);
 
+/* Returns 1 on a successful SPI transaction; leaves value unchanged on failure. */
+uint8_t BSP_W5500_RegReadChecked(uint16_t offset, uint8_t *value);
+
 /**
  * @brief 通用寄存器 8 位写。
  * @param offset 寄存器偏移地址（16 位）。

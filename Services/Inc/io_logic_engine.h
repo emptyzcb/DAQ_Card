@@ -42,7 +42,7 @@ extern "C" {
 #define IO_LOGIC_ENABLE_ANALOG_OUTPUT  1U
 
 /**
- * @brief 初始化字节码虚拟机：清零状态、初始化模拟量输出并关闭全部输出。
+ * @brief 初始化字节码虚拟机：清零状态并关闭全部输出。DAC 由平台层初始化。
  */
 void IO_LOGIC_ENGINE_Init(void);
 
@@ -69,6 +69,14 @@ uint8_t IO_LOGIC_ENGINE_GetFreqClass(uint8_t channel);
 /* 模拟量输出状态查询（寄存器上报） */
 uint16_t IO_LOGIC_ENGINE_GetAoVoltageMv(void);
 uint16_t IO_LOGIC_ENGINE_GetAoCurrentUa(void);
+
+/*
+ * 远程命令字：上位机通过以太网 Modbus 寄存器 0x0005 写入。
+ * 本值不直接驱动任何硬件输出，仅作为一种"虚拟输入"供字节码
+ * 后续扩展指令读取；物理输出仍完全由本引擎规则决定。
+ */
+void    IO_LOGIC_ENGINE_SetRemoteCommand(uint16_t cmd);
+uint16_t IO_LOGIC_ENGINE_GetRemoteCommand(void);
 
 #ifdef __cplusplus
 }

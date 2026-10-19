@@ -336,7 +336,7 @@
               <MiscControls></MiscControls>
               <Define>USE_PWR_LDO_SUPPLY,USE_HAL_DRIVER,STM32H743xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../BSP/Inc;../Application/Inc;../Platform/Inc;../Services/Inc;../bmi270_api;../Algorithm/Inc</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../BSP/Inc;../Application/Inc;../Platform/Inc;../Services/Inc</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -461,11 +461,6 @@
               <FilePath>../Core/Src/fdcan.c</FilePath>
             </File>
             <File>
-              <FileName>spi.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Core/Src/spi.c</FilePath>
-            </File>
-            <File>
               <FileName>usart.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/usart.c</FilePath>
@@ -561,16 +556,6 @@
               <FilePath>..\Application\Inc\ALL_Task.h</FilePath>
             </File>
             <File>
-              <FileName>Task_att_est.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Application\Src\Task_att_est.c</FilePath>
-            </File>
-            <File>
-              <FileName>Task_att_est.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\Application\Inc\Task_att_est.h</FilePath>
-            </File>
-            <File>
               <FileName>Task_digital_io.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Application\Src\Task_digital_io.c</FilePath>
@@ -635,11 +620,6 @@
         <Group>
           <GroupName>BSP</GroupName>
           <Files>
-            <File>
-              <FileName>bsp_imu660rc.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../BSP/Src/bsp_imu660rc.c</FilePath>
-            </File>
             <File>
               <FileName>bsp_console.c</FileName>
               <FileType>1</FileType>
@@ -741,11 +721,6 @@
           <GroupName>Services</GroupName>
           <Files>
             <File>
-              <FileName>imu_service.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Services/Src/imu_service.c</FilePath>
-            </File>
-            <File>
               <FileName>led_blink.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Services/Src/led_blink.c</FilePath>
@@ -784,6 +759,26 @@
               <FileName>modbus_rtu.h</FileName>
               <FileType>5</FileType>
               <FilePath>../Services/Inc/modbus_rtu.h</FilePath>
+            </File>
+            <File>
+              <FileName>modbus_tcp.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Services/Src/modbus_tcp.c</FilePath>
+            </File>
+            <File>
+              <FileName>modbus_tcp.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../Services/Inc/modbus_tcp.h</FilePath>
+            </File>
+            <File>
+              <FileName>modbus_master.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Services/Src/modbus_master.c</FilePath>
+            </File>
+            <File>
+              <FileName>modbus_master.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../Services/Inc/modbus_master.h</FilePath>
             </File>
             <File>
               <FileName>modbus_register_map.c</FileName>
@@ -844,21 +839,6 @@
               <FileName>io_logic_protocol.h</FileName>
               <FileType>5</FileType>
               <FilePath>../Services/Inc/io_logic_protocol.h</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>BMI270_API</GroupName>
-          <Files>
-            <File>
-              <FileName>bmi2.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../bmi270_api/bmi2.c</FilePath>
-            </File>
-            <File>
-              <FileName>bmi270.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../bmi270_api/bmi270.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1827,26 +1807,6 @@
                   </Cads>
                 </FileArmAds>
               </FileOption>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>Algorithm</GroupName>
-          <Files>
-            <File>
-              <FileName>quaternion.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Algorithm/Src/quaternion.c</FilePath>
-            </File>
-            <File>
-              <FileName>attitude_est.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Algorithm/Src/attitude_est.c</FilePath>
-            </File>
-            <File>
-              <FileName>madgwick.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Algorithm/Src/madgwick.c</FilePath>
             </File>
           </Files>
         </Group>

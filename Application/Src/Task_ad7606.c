@@ -3,6 +3,7 @@
 void AppTask_Ad7606(void *argument)
 {
   (void)argument;
+  AD7606_SERVICE_Init();
 
   for (;;)
   {

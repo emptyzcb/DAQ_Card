@@ -22,8 +22,10 @@
 #include <string.h>
 
 #include "bsp_analog_output.h"
+#include "datahub.h"
 #include "digital_io_service.h"
 #include "io_config_storage.h"
+#include "modbus_master.h"
 
 /* ---------------- 字节码操作码定义（与上位机 IoLogicCompiler 一一对应） ---------------- */
 #define OP_NOP            0x00U
@@ -37,11 +39,17 @@
 #define OP_TEST_EXT_MODE_EQ 0x16U
 #define OP_TEST_CUR_MODE_EQ 0x17U
 #define OP_TEST_EXT_NEQ_CUR 0x18U
+#define OP_TEST_AI_VALID   0x19U
+#define OP_TEST_AI_MV      0x1AU
+#define OP_TEST_CURRENT_UA 0x1BU
+#define OP_TEST_RS485_VALID 0x1CU
+#define OP_TEST_RS485_VALUE 0x1DU
 #define OP_DO_SET         0x20U
 #define OP_DO_PULSE       0x21U
 #define OP_AO_SET_VOLTAGE 0x22U
 #define OP_AO_SET_CURRENT 0x23U
 #define OP_AO_BREATH      0x24U
+#define OP_AO_BREATH_CURRENT 0x25U
 #define OP_DELAY          0x30U
 #define OP_SET_MODE       0x31U
 #define OP_RUN_CURRENT_MODE 0x32U
@@ -85,6 +93,7 @@ typedef struct
   uint16_t status_flags;
   uint16_t ao_voltage_mv;
   uint16_t ao_current_ua;
+  uint16_t remote_command;          /* 上位机通过 0x0005 写入的命令字 */
 } IO_LOGIC_VM_State;
 
 static IO_LOGIC_VM_State io_vm;
@@ -92,6 +101,54 @@ static IO_LOGIC_VM_State io_vm;
 static uint16_t io_logic_read_u16(const uint8_t *data)
 {
   return (uint16_t)(((uint16_t)data[0] << 8) | data[1]);
+}
+
+static uint8_t io_logic_compare(uint16_t actual, uint16_t expected,
+                                uint8_t comparison, uint8_t signed_value)
+{
+  if (signed_value != 0U)
+  {
+    int16_t left = (int16_t)actual;
+    int16_t right = (int16_t)expected;
+    switch (comparison)
+    {
+      case 0U: return left == right;
+      case 1U: return left != right;
+      case 2U: return left > right;
+      case 3U: return left < right;
+      default: return 0U;
+    }
+  }
+  switch (comparison)
+  {
+    case 0U: return actual == expected;
+    case 1U: return actual != expected;
+    case 2U: return actual > expected;
+    case 3U: return actual < expected;
+    default: return 0U;
+  }
+}
+
+static uint8_t io_logic_ai_valid(const DataHubAd7606Data *sample, uint32_t now_ms)
+{
+  return (sample->seq != 0U) && (sample->ad7606_ready != 0) &&
+         (sample->last_read_ok != 0) &&
+         ((uint32_t)(now_ms - sample->timestamp_ms) <= 500U);
+}
+
+static uint8_t io_logic_rs485_valid(const DataHubRs485SensorData *sensor,
+                                    uint32_t now_ms)
+{
+  uint32_t max_age_ms = ((uint32_t)sensor->interval_ms * 3U) +
+                        ((uint32_t)MODBUS_MASTER_GetActiveCount() * 250U);
+  if (max_age_ms < 1000U)
+  {
+    max_age_ms = 1000U;
+  }
+  return (sensor->seq != 0U) && (sensor->configured != 0U) &&
+         (sensor->enabled != 0U) && (sensor->last_ok != 0U) &&
+         (sensor->quantity > 0U) &&
+         ((uint32_t)(now_ms - sensor->timestamp_ms) <= max_age_ms);
 }
 
 /* ---------------- 镜像加载 ---------------- */
@@ -211,14 +268,17 @@ static void io_logic_update_freq_class(uint8_t channel, uint32_t now_ms)
 
 /* ---------------- 程序安全停止 ---------------- */
 
-/* 虚拟机故障：安全停止并关闭全部输出，状态标志位留存供诊断。 */
+/* 虚拟机故障：安全停止并关闭全部输出（数字+模拟），状态标志位留存供诊断。 */
 static void io_logic_fault_stop(void)
 {
   io_vm.run_state = IO_LOGIC_RUN_STATE_STOPPED;
   io_vm.status_flags |= IO_LOGIC_STATUS_VM_FAULT;
   io_vm.output_mask = 0U;
   memset(io_vm.pulse_until, 0, sizeof(io_vm.pulse_until));
+  io_vm.ao_voltage_mv = 0U;
+  io_vm.ao_current_ua = 0U;
   DIGITAL_IO_SERVICE_AllOutputsOff();
+  BSP_ANALOG_OUTPUT_AllOff();
 }
 
 /* ---------------- 指令执行 ---------------- */
@@ -232,7 +292,7 @@ static uint8_t io_logic_read_di_level(uint8_t channel, uint16_t input_mask)
   return ((input_mask & (uint16_t)(1U << channel)) != 0U) ? 1U : 0U;
 }
 
-/* 模式切换：规格要求先关闭全部输出，再启动目标模式。 */
+/* 模式切换：规格要求先关闭全部输出（数字+模拟），再启动目标模式。 */
 static void io_logic_do_set_mode(uint8_t mode)
 {
   if (mode >= IO_LOGIC_MODE_COUNT)
@@ -245,7 +305,10 @@ static void io_logic_do_set_mode(uint8_t mode)
   }
 
   DIGITAL_IO_SERVICE_AllOutputsOff();
+  BSP_ANALOG_OUTPUT_AllOff();
   io_vm.output_mask = 0U;
+  io_vm.ao_voltage_mv = 0U;
+  io_vm.ao_current_ua = 0U;
   memset(io_vm.pulse_until, 0, sizeof(io_vm.pulse_until));
   io_vm.current_mode = mode;
 }
@@ -296,6 +359,11 @@ static void io_logic_execute_one(uint16_t input_mask, uint16_t rising_mask,
   uint16_t operand16;
   uint16_t jump_rel;
   uint16_t pc;
+  uint8_t comparison;
+  uint8_t valid;
+  DataHubAd7606Data analog;
+  DataHubRs485SensorData sensor;
+  int32_t current_ua;
 
   pc = io_logic_fetch_next();
   if (pc == 0xFFFFU)
@@ -433,6 +501,91 @@ static void io_logic_execute_one(uint16_t input_mask, uint16_t rising_mask,
       }
       break;
 
+    case OP_TEST_AI_VALID:
+    case OP_TEST_RS485_VALID:
+      if ((io_vm.pc + 4U) > io_vm.body_length) { io_logic_fault_stop(); return; }
+      channel = io_vm.body[io_vm.pc];
+      operand8 = io_vm.body[io_vm.pc + 1U];
+      jump_rel = io_logic_read_u16(&io_vm.body[io_vm.pc + 2U]);
+      io_vm.pc = (uint16_t)(io_vm.pc + 4U);
+      if ((operand8 > 1U) ||
+          ((opcode == OP_TEST_AI_VALID) && (channel >= BSP_AD7606_CHANNEL_COUNT)) ||
+          ((opcode == OP_TEST_RS485_VALID) && (channel >= DATAHUB_RS485_MAX_ITEMS)))
+      {
+        io_logic_fault_stop();
+        return;
+      }
+      if (opcode == OP_TEST_AI_VALID)
+      {
+        DataHub_GetAd7606(&analog);
+        valid = io_logic_ai_valid(&analog, now_ms);
+      }
+      else
+      {
+        DataHub_GetRs485Sensor(channel, &sensor);
+        valid = io_logic_rs485_valid(&sensor, now_ms);
+      }
+      if (valid != operand8) io_vm.pc = (uint16_t)(io_vm.pc + jump_rel);
+      break;
+
+    case OP_TEST_AI_MV:
+    case OP_TEST_CURRENT_UA:
+      if ((io_vm.pc + 6U) > io_vm.body_length) { io_logic_fault_stop(); return; }
+      channel = io_vm.body[io_vm.pc];
+      comparison = io_vm.body[io_vm.pc + 1U];
+      operand16 = io_logic_read_u16(&io_vm.body[io_vm.pc + 2U]);
+      jump_rel = io_logic_read_u16(&io_vm.body[io_vm.pc + 4U]);
+      io_vm.pc = (uint16_t)(io_vm.pc + 6U);
+      if ((comparison > 3U) || (channel >= BSP_AD7606_CHANNEL_COUNT) ||
+          ((opcode == OP_TEST_CURRENT_UA) && (channel >= 2U)))
+      {
+        io_logic_fault_stop();
+        return;
+      }
+      DataHub_GetAd7606(&analog);
+      if (io_logic_ai_valid(&analog, now_ms) == 0U)
+      {
+        io_vm.pc = (uint16_t)(io_vm.pc + jump_rel);
+        break;
+      }
+      if (opcode == OP_TEST_AI_MV)
+      {
+        valid = io_logic_compare((uint16_t)(int16_t)analog.mv[channel],
+                                 operand16, comparison, 1U);
+      }
+      else
+      {
+        current_ua = analog.mv[channel] > 0 ?
+                     (analog.mv[channel] * 1000) / 155 : 0;
+        if (current_ua > 65535) current_ua = 65535;
+        valid = io_logic_compare((uint16_t)current_ua, operand16, comparison, 0U);
+      }
+      if (valid == 0U) io_vm.pc = (uint16_t)(io_vm.pc + jump_rel);
+      break;
+
+    case OP_TEST_RS485_VALUE:
+      if ((io_vm.pc + 7U) > io_vm.body_length) { io_logic_fault_stop(); return; }
+      channel = io_vm.body[io_vm.pc];
+      operand8 = io_vm.body[io_vm.pc + 1U];
+      comparison = io_vm.body[io_vm.pc + 2U];
+      operand16 = io_logic_read_u16(&io_vm.body[io_vm.pc + 3U]);
+      jump_rel = io_logic_read_u16(&io_vm.body[io_vm.pc + 5U]);
+      io_vm.pc = (uint16_t)(io_vm.pc + 7U);
+      if ((channel >= DATAHUB_RS485_MAX_ITEMS) ||
+          (operand8 >= DATAHUB_RS485_REGS_PER_ITEM) || (comparison > 3U))
+      {
+        io_logic_fault_stop();
+        return;
+      }
+      DataHub_GetRs485Sensor(channel, &sensor);
+      valid = io_logic_rs485_valid(&sensor, now_ms) && (operand8 < sensor.quantity);
+      if ((valid == 0U) ||
+          (io_logic_compare(sensor.values[operand8], operand16, comparison, 0U) == 0U))
+      {
+        io_vm.pc = (uint16_t)(io_vm.pc + jump_rel);
+      }
+      break;
+
     case OP_DO_SET:
       if ((io_vm.pc + 2U) > io_vm.body_length) { io_logic_fault_stop(); return; }
       channel = io_vm.body[io_vm.pc];
@@ -494,8 +647,19 @@ static void io_logic_execute_one(uint16_t input_mask, uint16_t rising_mask,
         uint16_t hi = io_logic_read_u16(&io_vm.body[io_vm.pc + 2U]);
         uint16_t period = io_logic_read_u16(&io_vm.body[io_vm.pc + 4U]);
         io_vm.pc = (uint16_t)(io_vm.pc + 6U);
-        io_vm.ao_voltage_mv = hi;
         BSP_ANALOG_OUTPUT_StartVoltageBreath(lo, hi, period, now_ms);
+      }
+      break;
+
+    case OP_AO_BREATH_CURRENT:
+      if ((io_vm.pc + 6U) > io_vm.body_length) { io_logic_fault_stop(); return; }
+      {
+        uint16_t lo = io_logic_read_u16(&io_vm.body[io_vm.pc]);
+        uint16_t hi = io_logic_read_u16(&io_vm.body[io_vm.pc + 2U]);
+        uint16_t period = io_logic_read_u16(&io_vm.body[io_vm.pc + 4U]);
+        io_vm.pc = (uint16_t)(io_vm.pc + 6U);
+        if ((lo > hi) || (hi > 20000U) || (period < 20U)) { io_logic_fault_stop(); return; }
+        BSP_ANALOG_OUTPUT_StartCurrentBreath(lo, hi, period, now_ms);
       }
       break;
 #else
@@ -514,6 +678,12 @@ static void io_logic_execute_one(uint16_t input_mask, uint16_t rising_mask,
     case OP_AO_BREATH:
       if ((io_vm.pc + 6U) > io_vm.body_length) { io_logic_fault_stop(); return; }
       io_vm.ao_voltage_mv = io_logic_read_u16(&io_vm.body[io_vm.pc + 2U]);
+      io_vm.pc = (uint16_t)(io_vm.pc + 6U);
+      break;
+
+    case OP_AO_BREATH_CURRENT:
+      if ((io_vm.pc + 6U) > io_vm.body_length) { io_logic_fault_stop(); return; }
+      io_vm.ao_current_ua = io_logic_read_u16(&io_vm.body[io_vm.pc + 2U]);
       io_vm.pc = (uint16_t)(io_vm.pc + 6U);
       break;
 #endif
@@ -604,7 +774,8 @@ static void io_logic_execute_one(uint16_t input_mask, uint16_t rising_mask,
 void IO_LOGIC_ENGINE_Init(void)
 {
   memset(&io_vm, 0, sizeof(io_vm));
-  BSP_ANALOG_OUTPUT_Init(); /* 平台化工程在此初始化模拟量输出（默认 0V/0mA） */
+  /* DAC is initialized once by PLATFORM_Init; the rule task only enforces safe off. */
+  BSP_ANALOG_OUTPUT_AllOff();
   DIGITAL_IO_SERVICE_AllOutputsOff();
 }
 
@@ -647,6 +818,7 @@ void IO_LOGIC_ENGINE_Step(uint16_t input_mask, uint32_t now_ms)
     io_vm.ao_current_ua = 0U;
     io_vm.generation = generation;
     DIGITAL_IO_SERVICE_AllOutputsOff();
+    BSP_ANALOG_OUTPUT_AllOff();
   }
 
   /* 单次执行结束（主程序无 while）：保持当前输出，不再继续执行。 */
@@ -663,6 +835,11 @@ void IO_LOGIC_ENGINE_Step(uint16_t input_mask, uint32_t now_ms)
   if ((io_vm.delay_until_ms != 0U) &&
       ((int32_t)(now_ms - io_vm.delay_until_ms) < 0))
   {
+#if IO_LOGIC_ENABLE_ANALOG_OUTPUT
+    BSP_ANALOG_OUTPUT_Process(now_ms);
+    io_vm.ao_voltage_mv = BSP_ANALOG_OUTPUT_GetVoltageMv();
+    io_vm.ao_current_ua = BSP_ANALOG_OUTPUT_GetCurrentUa();
+#endif
     return;
   }
   io_vm.delay_until_ms = 0U;
@@ -707,6 +884,8 @@ void IO_LOGIC_ENGINE_Step(uint16_t input_mask, uint32_t now_ms)
   /* 模拟量输出波形推进（呼吸模式时更新 DAC，非呼吸模式下空操作）。 */
 #if IO_LOGIC_ENABLE_ANALOG_OUTPUT
   BSP_ANALOG_OUTPUT_Process(now_ms);
+  io_vm.ao_voltage_mv = BSP_ANALOG_OUTPUT_GetVoltageMv();
+  io_vm.ao_current_ua = BSP_ANALOG_OUTPUT_GetCurrentUa();
 #endif
 }
 
@@ -714,8 +893,11 @@ void IO_LOGIC_ENGINE_Stop(void)
 {
   io_vm.run_state = IO_LOGIC_RUN_STATE_STOPPED;
   io_vm.output_mask = 0U;
+  io_vm.ao_voltage_mv = 0U;
+  io_vm.ao_current_ua = 0U;
   memset(io_vm.pulse_until, 0, sizeof(io_vm.pulse_until));
   DIGITAL_IO_SERVICE_AllOutputsOff();
+  BSP_ANALOG_OUTPUT_AllOff();
 }
 
 uint16_t IO_LOGIC_ENGINE_GetOutputMask(void)
@@ -755,4 +937,14 @@ uint16_t IO_LOGIC_ENGINE_GetAoVoltageMv(void)
 uint16_t IO_LOGIC_ENGINE_GetAoCurrentUa(void)
 {
   return io_vm.ao_current_ua;
+}
+
+void IO_LOGIC_ENGINE_SetRemoteCommand(uint16_t cmd)
+{
+  io_vm.remote_command = cmd;
+}
+
+uint16_t IO_LOGIC_ENGINE_GetRemoteCommand(void)
+{
+  return io_vm.remote_command;
 }

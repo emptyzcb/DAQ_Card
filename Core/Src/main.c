@@ -20,12 +20,12 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "fdcan.h"
-#include "spi.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "bsp_led.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,6 +46,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+static volatile uint8_t boot_stage;
+static volatile uint32_t boot_stage_start_tick;
 
 /* USER CODE END PV */
 
@@ -54,8 +56,58 @@ void SystemClock_Config(void);
 static void MPU_Config(void);
 void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
+static void Boot_Diagnostic_Delay(uint32_t cycles);
 
 /* USER CODE END PFP */
+
+/* USER CODE BEGIN 0 */
+static void Boot_Diagnostic_Delay(uint32_t cycles)
+{
+  volatile uint32_t index;
+
+  for (index = 0U; index < cycles; index++)
+  {
+    __NOP();
+  }
+}
+
+void Boot_Diagnostic_SetStage(uint8_t stage)
+{
+  boot_stage_start_tick = HAL_GetTick();
+  boot_stage = stage;
+  if (stage != 0U)
+  {
+    GPIOA->BSRR = (uint32_t)PA0_LED_Pin << 16;
+  }
+}
+
+void Boot_Diagnostic_CpuFault(void)
+{
+  boot_stage = 9U;
+  Error_Handler();
+}
+
+void Boot_Diagnostic_Assert(void)
+{
+  boot_stage = 8U;
+  Error_Handler();
+}
+
+void Boot_Diagnostic_Tick(void)
+{
+  uint8_t stage = boot_stage;
+  uint32_t phase;
+
+  if ((stage == 0U) || (stage > 6U))
+  {
+    return;
+  }
+  phase = (HAL_GetTick() - boot_stage_start_tick) % 3000U;
+  GPIOA->BSRR = (phase < (uint32_t)stage * 200U &&
+                 (phase % 200U) < 100U)
+                    ? PA0_LED_Pin : ((uint32_t)PA0_LED_Pin << 16);
+}
+/* USER CODE END 0 */
 
 /**
   * @brief  The application entry point.
@@ -89,11 +141,27 @@ int main(void)
 
   /* Initialize the complete production hardware set before starting RTOS. */
   MX_GPIO_Init();
-  MX_SPI1_Init();
+  /* Boot stages pulse on PA0 until the RTOS heartbeat takes over. */
+  BSP_LED_Init();
+  BSP_LED_On();
+  Boot_Diagnostic_SetStage(1U);
   MX_USART2_UART_Init();
+  /* Send the version before any later peripheral or platform initialization. */
+  {
+    static const uint8_t boot_banner[] =
+        "\r\n[BOOT] FW=" APP_FIRMWARE_VERSION " USART2 ready\r\n";
+    if (HAL_UART_Transmit(&huart2, (uint8_t *)boot_banner,
+                          (uint16_t)(sizeof(boot_banner) - 1U), 100U) != HAL_OK)
+    {
+      Boot_Diagnostic_SetStage(7U);
+      Error_Handler();
+    }
+  }
+  Boot_Diagnostic_SetStage(2U);
   MX_USART1_UART_Init();
   MX_USART3_UART_Init();
   MX_FDCAN1_Init();
+  Boot_Diagnostic_SetStage(3U);
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -103,7 +171,9 @@ int main(void)
   MX_FREERTOS_Init();
 
   /* Start scheduler */
+  Boot_Diagnostic_SetStage(6U);
   osKernelStart();
+  Error_Handler();
 
   /* We should never get here as control is now taken by the scheduler */
 
@@ -226,6 +296,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM6)
   {
     HAL_IncTick();
+    Boot_Diagnostic_Tick();
   }
   /* USER CODE BEGIN Callback 1 */
 
@@ -239,10 +310,19 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
   while (1)
   {
+    uint8_t pulse;
+
+    for (pulse = 0U; pulse < boot_stage; pulse++)
+    {
+      GPIOA->BSRR = PA0_LED_Pin;
+      Boot_Diagnostic_Delay(2500000U);
+      GPIOA->BSRR = (uint32_t)PA0_LED_Pin << 16;
+      Boot_Diagnostic_Delay(2500000U);
+    }
+    Boot_Diagnostic_Delay(9000000U);
   }
   /* USER CODE END Error_Handler_Debug */
 }

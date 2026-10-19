@@ -6,10 +6,6 @@ Source: `采集卡电路原理图和引脚定义表.pdf`, page 2.
 
 | Function | STM32H743 pin | Net |
 | --- | --- | --- |
-| BMI270 SCK | PB3 | `IMU_SPI_SCK` |
-| BMI270 MISO | PB4 | `IMU_SPI_MISO` |
-| BMI270 MOSI | PB5 | `IMU_SPI_MOSI` |
-| BMI270 CS | PC4 | `IMU_SPI_CS` |
 | Debug UART TX | PA2 | `TX_DEBUG` |
 | Debug UART RX | PA3 | `RX_DEBUG` |
 
@@ -129,12 +125,11 @@ Source: `采集卡电路原理图和引脚定义表.pdf`, page 2.
 
 ## Implementation Phases
 
-1. Align existing BMI270 BSP to `board_pins.h`.
-2. Add GPIO BSPs for relay outputs, transistor outputs, switch inputs, and
+1. Add GPIO BSPs for relay outputs, transistor outputs, switch inputs, and
    basic DO control.
-3. Add bus BSPs for AHT10 I2C, PT100 SPI, W5500 SPI, TF card, and SPI/QSPI
+2. Add bus BSPs for AHT10 I2C, PT100 SPI, W5500 SPI, TF card, and SPI/QSPI
    flash after CubeMX generates the corresponding peripheral handles.
-4. Add AD7606 BSP from the schematic-page net names after its MCU pin mapping
+3. Add AD7606 BSP from the schematic-page net names after its MCU pin mapping
    is traced and validated.
 5. Move high-rate acquisition and transport paths to non-blocking task/DMA
    flows before enabling sustained telemetry.

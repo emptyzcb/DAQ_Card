@@ -188,13 +188,45 @@ int BSP_W5500_SpiTransfer(const uint8_t *tx_data, uint8_t *rx_data, uint16_t len
 
 uint8_t BSP_W5500_RegRead(uint16_t offset)
 {
-  const uint8_t dummy = 0xFFU;
   uint8_t rx = 0x00U;
 
-  bsp_w5500_frame_start(bsp_w5500_addrsel(offset, BSP_W5500_BSB_COMMON, BSP_W5500_RWB_READ));
-  (void)HAL_SPI_TransmitReceive(&bsp_w5500_spi, (uint8_t *)&dummy, &rx, 1U, 100U);
-  bsp_w5500_frame_end();
+  (void)BSP_W5500_RegReadChecked(offset, &rx);
   return rx;
+}
+
+uint8_t BSP_W5500_RegReadChecked(uint16_t offset, uint8_t *value)
+{
+  uint32_t addrsel;
+  uint8_t header[3];
+  uint8_t ignored[3];
+  uint8_t dummy = 0xFFU;
+  uint8_t rx;
+  HAL_StatusTypeDef status;
+
+  if (value == 0)
+  {
+    return 0U;
+  }
+
+  addrsel = bsp_w5500_addrsel(offset, BSP_W5500_BSB_COMMON, BSP_W5500_RWB_READ);
+  header[0] = (uint8_t)(addrsel >> 16U);
+  header[1] = (uint8_t)(addrsel >> 8U);
+  header[2] = (uint8_t)addrsel;
+
+  HAL_GPIO_WritePin(BSP_W5500_PORT, BSP_W5500_CS_PIN, GPIO_PIN_RESET);
+  status = HAL_SPI_TransmitReceive(&bsp_w5500_spi, header, ignored, 3U, 100U);
+  if (status == HAL_OK)
+  {
+    status = HAL_SPI_TransmitReceive(&bsp_w5500_spi, &dummy, &rx, 1U, 100U);
+  }
+  bsp_w5500_frame_end();
+  if (status != HAL_OK)
+  {
+    return 0U;
+  }
+
+  *value = rx;
+  return 1U;
 }
 
 void BSP_W5500_RegWrite(uint16_t offset, uint8_t value)

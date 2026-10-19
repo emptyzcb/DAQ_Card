@@ -5,32 +5,23 @@
 #include "ad7606_service.h"
 #include "rs485_uart.h"
 #include "io_logic_engine.h"
+#include "modbus_master.h"
 
-static int16_t modbus_scale_angle(float degrees)
-{
-  float scaled = degrees * 100.0f;
-
-  if (scaled > 32767.0f)
-  {
-    return 32767;
-  }
-
-  if (scaled < -32768.0f)
-  {
-    return -32768;
-  }
-
-  if (scaled >= 0.0f)
-  {
-    scaled += 0.5f;
-  }
-  else
-  {
-    scaled -= 0.5f;
-  }
-
-  return (int16_t)scaled;
-}
+#define MODBUS_RS485_DATA_BASE             0x0080U
+#define MODBUS_RS485_DATA_END              0x027FU
+#define MODBUS_RS485_ACTIVE_COUNT_REG      0x0280U
+#define MODBUS_RS485_CAPACITY_REG          0x0281U
+#define MODBUS_RS485_GENERATION_HIGH_REG   0x0282U
+#define MODBUS_RS485_GENERATION_LOW_REG    0x0283U
+#define MODBUS_RS485_STAGED_COUNT_REG      0x0284U
+#define MODBUS_RS485_APPLY_REG             0x0285U
+#define MODBUS_RS485_APPLY_MAGIC           0xA55AU
+#define MODBUS_RS485_METADATA_BASE         0x0300U
+#define MODBUS_RS485_METADATA_END          0x03FFU
+#define MODBUS_RS485_METADATA_REGS         8U
+#define MODBUS_RS485_STAGING_BASE          0x0400U
+#define MODBUS_RS485_STAGING_END           0x04BFU
+#define MODBUS_RS485_STAGING_REGS          6U
 
 static uint16_t modbus_as_u16(int16_t value)
 {
@@ -54,7 +45,6 @@ static uint16_t modbus_u64_word(uint64_t value, uint8_t word_index)
 
 int MODBUS_REGISTER_ReadHolding(uint16_t address, uint16_t *value)
 {
-  DataHubImuData imu;
   DataHubAd7606Data ad7606;
   DataHubDigitalIoData digital_io;
 
@@ -66,11 +56,8 @@ int MODBUS_REGISTER_ReadHolding(uint16_t address, uint16_t *value)
   switch (address)
   {
     case 0x0000U:
-      DataHub_GetImu(&imu);
       DataHub_GetAd7606(&ad7606);
-      *value = (uint16_t)((imu.imu_ready ? 0x0001U : 0U) |
-                          (ad7606.ad7606_ready ? 0x0002U : 0U) |
-                          ((imu.imu_ready && (imu.last_read_rslt == 0)) ? 0x0004U : 0U) |
+      *value = (uint16_t)((ad7606.ad7606_ready ? 0x0002U : 0U) |
                           (ad7606.last_read_ok ? 0x0008U : 0U));
       return 1;
 
@@ -80,8 +67,12 @@ int MODBUS_REGISTER_ReadHolding(uint16_t address, uint16_t *value)
       return 1;
 
     case 0x0002U:
-      DataHub_GetDigitalIo(&digital_io);
-      *value = digital_io.output_mask;
+      /*
+       * 输出掩码只读回读：板卡 8 路物理输出完全由 IO 规则引擎驱动，
+       * 上位机写本寄存器不再直接拉继电器/晶体管。要影响输出请下载
+       * IOCF 规则或写 0x0005 远程命令字。
+       */
+      *value = IO_LOGIC_ENGINE_GetOutputMask();
       return 1;
 
     case 0x0003U:
@@ -92,6 +83,29 @@ int MODBUS_REGISTER_ReadHolding(uint16_t address, uint16_t *value)
       }
       return 1;
 
+    case 0x0004U:
+      /* 外部传感器链路状态：bit0..15 = item0..15 最近一次成功。 */
+      {
+        uint16_t word = 0U;
+        uint8_t i;
+        for (i = 0U; i < 16U; i++)
+        {
+          DataHubRs485SensorData sensor;
+          DataHub_GetRs485Sensor(i, &sensor);
+          if ((sensor.configured != 0U) && (sensor.last_ok != 0U))
+          {
+            word |= (uint16_t)(1U << i);
+          }
+        }
+        *value = word;
+      }
+      return 1;
+
+    case 0x0006U:
+      /* bit0: snapshot inputs; bit1: current-breath opcode. */
+      *value = 0x0003U;
+      return 1;
+
     default:
       break;
   }
@@ -100,33 +114,6 @@ int MODBUS_REGISTER_ReadHolding(uint16_t address, uint16_t *value)
   {
     DataHub_GetAd7606(&ad7606);
     *value = modbus_as_u16(ad7606.raw[address - 0x0010U]);
-    return 1;
-  }
-
-  if ((address >= 0x0020U) && (address < 0x0026U))
-  {
-    DataHub_GetImu(&imu);
-    switch (address - 0x0020U)
-    {
-      case 0U: *value = modbus_as_u16(imu.accel_raw_x); break;
-      case 1U: *value = modbus_as_u16(imu.accel_raw_y); break;
-      case 2U: *value = modbus_as_u16(imu.accel_raw_z); break;
-      case 3U: *value = modbus_as_u16(imu.gyro_raw_x); break;
-      case 4U: *value = modbus_as_u16(imu.gyro_raw_y); break;
-      default: *value = modbus_as_u16(imu.gyro_raw_z); break;
-    }
-    return 1;
-  }
-
-  if ((address >= 0x0030U) && (address < 0x0033U))
-  {
-    DataHub_GetImu(&imu);
-    switch (address - 0x0030U)
-    {
-      case 0U: *value = modbus_as_u16(modbus_scale_angle(imu.euler.roll)); break;
-      case 1U: *value = modbus_as_u16(modbus_scale_angle(imu.euler.pitch)); break;
-      default: *value = modbus_as_u16(modbus_scale_angle(imu.euler.yaw)); break;
-    }
     return 1;
   }
 
@@ -220,7 +207,7 @@ int MODBUS_REGISTER_ReadHolding(uint16_t address, uint16_t *value)
    *  0x0077        : 运行状态(高8) | 外部模式(bit4~7) | 当前模式(低4位)
    *  0x0078        : 输入掩码
    *  0x0079        : 状态标志（VM 故障 | 数字IO 状态）
-   *  0x007A        : 模拟量输出电压（mV）
+   *  0x007A        : 当前模拟电压输出指令（mV，非端子实测值）
    *  0x007B        : 模拟量输出电流（uA）
    */
   if ((address >= 0x0070U) && (address <= 0x007BU))
@@ -251,29 +238,243 @@ int MODBUS_REGISTER_ReadHolding(uint16_t address, uint16_t *value)
     return 1;
   }
 
+  /* 32 个 RS485 采集项的最新数据，每项 16 个寄存器。 */
+  if ((address >= MODBUS_RS485_DATA_BASE) &&
+      (address <= MODBUS_RS485_DATA_END))
+  {
+    DataHubRs485SensorData sensor;
+    uint16_t item_index = (uint16_t)((address - MODBUS_RS485_DATA_BASE) /
+                                     MODBUS_MASTER_REGS_PER_ITEM);
+    uint16_t value_index = (uint16_t)((address - MODBUS_RS485_DATA_BASE) %
+                                      MODBUS_MASTER_REGS_PER_ITEM);
+
+    if (item_index >= MODBUS_MASTER_MAX_ITEMS)
+    {
+      return 0;
+    }
+    DataHub_GetRs485Sensor((uint8_t)item_index, &sensor);
+    *value = sensor.values[value_index];
+    return 1;
+  }
+
+  if ((address >= MODBUS_RS485_ACTIVE_COUNT_REG) &&
+      (address <= MODBUS_RS485_APPLY_REG))
+  {
+    uint32_t generation = MODBUS_MASTER_GetConfigGeneration();
+
+    switch (address)
+    {
+      case MODBUS_RS485_ACTIVE_COUNT_REG:
+        *value = MODBUS_MASTER_GetActiveCount();
+        break;
+      case MODBUS_RS485_CAPACITY_REG:
+        *value = MODBUS_MASTER_MAX_ITEMS;
+        break;
+      case MODBUS_RS485_GENERATION_HIGH_REG:
+        *value = modbus_u32_high(generation);
+        break;
+      case MODBUS_RS485_GENERATION_LOW_REG:
+        *value = modbus_u32_low(generation);
+        break;
+      case MODBUS_RS485_STAGED_COUNT_REG:
+        *value = MODBUS_MASTER_GetStagedCount();
+        break;
+      default:
+        *value = 0U;
+        break;
+    }
+    return 1;
+  }
+
+  /* 每个采集项 8 个状态寄存器：身份、数量、状态、错误数和时间戳。 */
+  if ((address >= MODBUS_RS485_METADATA_BASE) &&
+      (address <= MODBUS_RS485_METADATA_END))
+  {
+    DataHubRs485SensorData sensor;
+    uint16_t item_index = (uint16_t)((address - MODBUS_RS485_METADATA_BASE) /
+                                     MODBUS_RS485_METADATA_REGS);
+    uint16_t field = (uint16_t)((address - MODBUS_RS485_METADATA_BASE) %
+                                MODBUS_RS485_METADATA_REGS);
+
+    if (item_index >= MODBUS_MASTER_MAX_ITEMS)
+    {
+      return 0;
+    }
+    DataHub_GetRs485Sensor((uint8_t)item_index, &sensor);
+    switch (field)
+    {
+      case 0U: *value = sensor.slave_addr; break;
+      case 1U: *value = sensor.function; break;
+      case 2U: *value = sensor.quantity; break;
+      case 3U:
+        *value = (uint16_t)((sensor.configured ? 0x0001U : 0U) |
+                            (sensor.enabled ? 0x0002U : 0U) |
+                            (sensor.last_ok ? 0x0004U : 0U));
+        break;
+      case 4U: *value = modbus_u32_high(sensor.error_count); break;
+      case 5U: *value = modbus_u32_low(sensor.error_count); break;
+      case 6U: *value = modbus_u32_high(sensor.timestamp_ms); break;
+      default: *value = modbus_u32_low(sensor.timestamp_ms); break;
+    }
+    return 1;
+  }
+
+  /* 上位机下载用的暂存采集表，每项 6 个寄存器。 */
+  if ((address >= MODBUS_RS485_STAGING_BASE) &&
+      (address <= MODBUS_RS485_STAGING_END))
+  {
+    ModbusMasterPollEntry entry;
+    uint16_t item_index = (uint16_t)((address - MODBUS_RS485_STAGING_BASE) /
+                                     MODBUS_RS485_STAGING_REGS);
+    uint16_t field = (uint16_t)((address - MODBUS_RS485_STAGING_BASE) %
+                                MODBUS_RS485_STAGING_REGS);
+
+    if ((item_index >= MODBUS_MASTER_MAX_ITEMS) ||
+        (MODBUS_MASTER_GetStagedEntry((uint8_t)item_index, &entry) == 0))
+    {
+      return 0;
+    }
+    switch (field)
+    {
+      case 0U: *value = entry.enabled; break;
+      case 1U:
+        *value = (uint16_t)(((uint16_t)entry.function << 8) |
+                            entry.slave_addr);
+        break;
+      case 2U: *value = entry.reg_start; break;
+      case 3U: *value = entry.quantity; break;
+      case 4U: *value = entry.interval_ms; break;
+      default: *value = entry.reserved; break;
+    }
+    return 1;
+  }
+
   return 0;
 }
 
 int MODBUS_REGISTER_IsWritable(uint16_t address)
 {
-  return (address == 0x0002U) ? 1 : 0;
+  /*
+   * 0x0002 数字输出掩码改为只读（物理输出完全由 IO 规则引擎驱动）。
+   * 0x0005 远程命令字：上位机写值后由引擎字节码决定如何响应，
+   *        本寄存器本身不直接动任何硬件输出。
+   */
+  if ((address == 0x0005U) ||
+      (address == MODBUS_RS485_STAGED_COUNT_REG) ||
+      (address == MODBUS_RS485_APPLY_REG))
+  {
+    return 1;
+  }
+
+  return ((address >= MODBUS_RS485_STAGING_BASE) &&
+          (address <= MODBUS_RS485_STAGING_END)) ? 1 : 0;
 }
 
 int MODBUS_REGISTER_IsValueValid(uint16_t address, uint16_t value)
 {
-  const uint16_t valid_output_mask = 0x00FFU;
+  uint16_t field;
 
-  return MODBUS_REGISTER_IsWritable(address) &&
-         ((value & (uint16_t)~valid_output_mask) == 0U);
+  if (address == 0x0005U)
+  {
+    return 1;
+  }
+  if (address == MODBUS_RS485_STAGED_COUNT_REG)
+  {
+    return (value <= MODBUS_MASTER_MAX_ITEMS) ? 1 : 0;
+  }
+  if (address == MODBUS_RS485_APPLY_REG)
+  {
+    return (value == MODBUS_RS485_APPLY_MAGIC) ? 1 : 0;
+  }
+  if ((address < MODBUS_RS485_STAGING_BASE) ||
+      (address > MODBUS_RS485_STAGING_END))
+  {
+    return 0;
+  }
+
+  field = (uint16_t)((address - MODBUS_RS485_STAGING_BASE) %
+                     MODBUS_RS485_STAGING_REGS);
+  switch (field)
+  {
+    case 0U:
+      return (value <= 1U) ? 1 : 0;
+    case 1U:
+      return ((((value >> 8) == MODBUS_MASTER_FUNCTION_HOLDING) ||
+               ((value >> 8) == MODBUS_MASTER_FUNCTION_INPUT)) &&
+              ((value & 0x00FFU) >= 1U) &&
+              ((value & 0x00FFU) <= 247U)) ? 1 : 0;
+    case 3U:
+      return ((value >= 1U) &&
+              (value <= MODBUS_MASTER_REGS_PER_ITEM)) ? 1 : 0;
+    case 4U:
+      return ((value >= MODBUS_MASTER_MIN_INTERVAL_MS) &&
+              (value <= MODBUS_MASTER_MAX_INTERVAL_MS)) ? 1 : 0;
+    case 5U:
+      return (value == 0U) ? 1 : 0;
+    default:
+      return 1;
+  }
 }
 
 int MODBUS_REGISTER_WriteHolding(uint16_t address, uint16_t value)
 {
+  ModbusMasterPollEntry entry;
+  uint16_t item_index;
+  uint16_t field;
+
   if (!MODBUS_REGISTER_IsValueValid(address, value))
   {
     return 0;
   }
 
-  DIGITAL_IO_SERVICE_SetOutputMask(value);
-  return 1;
+  if (address == 0x0005U)
+  {
+    IO_LOGIC_ENGINE_SetRemoteCommand(value);
+    return 1;
+  }
+
+  if (address == MODBUS_RS485_STAGED_COUNT_REG)
+  {
+    return MODBUS_MASTER_SetStagedCount((uint8_t)value);
+  }
+
+  if (address == MODBUS_RS485_APPLY_REG)
+  {
+    return MODBUS_MASTER_ApplyStaged();
+  }
+
+  item_index = (uint16_t)((address - MODBUS_RS485_STAGING_BASE) /
+                          MODBUS_RS485_STAGING_REGS);
+  field = (uint16_t)((address - MODBUS_RS485_STAGING_BASE) %
+                     MODBUS_RS485_STAGING_REGS);
+  if ((item_index >= MODBUS_MASTER_MAX_ITEMS) ||
+      (MODBUS_MASTER_GetStagedEntry((uint8_t)item_index, &entry) == 0))
+  {
+    return 0;
+  }
+
+  switch (field)
+  {
+    case 0U:
+      entry.enabled = (uint8_t)value;
+      break;
+    case 1U:
+      entry.function = (uint8_t)(value >> 8);
+      entry.slave_addr = (uint8_t)value;
+      break;
+    case 2U:
+      entry.reg_start = value;
+      break;
+    case 3U:
+      entry.quantity = value;
+      break;
+    case 4U:
+      entry.interval_ms = value;
+      break;
+    default:
+      entry.reserved = (uint8_t)value;
+      break;
+  }
+  return MODBUS_MASTER_StageEntry((uint8_t)item_index, &entry);
+
 }

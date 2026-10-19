@@ -18,7 +18,6 @@ void PLATFORM_Init(void)
   BSP_CONSOLE_Init();
   RS485_UART_Init();
   CAN_SERVICE_Init();
-  AD7606_SERVICE_Init();
 
   /*
    * 初始化板载W25Q128并校验JEDEC型号。驱动内部保存初始化状态，

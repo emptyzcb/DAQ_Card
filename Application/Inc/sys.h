@@ -21,7 +21,6 @@ extern "C" {
 
 #include "app.h"
 #include "ALL_Task.h"
-#include "Task_att_est.h"
 #include "Task_ad7606.h"
 #include "Task_digital_io.h"
 #include "Task_modbus_rtu.h"
@@ -35,10 +34,8 @@ extern "C" {
 #include "bsp_analog_output.h"
 #include "bsp_digital_io.h"
 #include "bsp_encoder_input.h"
-#include "bsp_imu660rc.h"
 #include "bsp_led.h"
 #include "bsp_pulse_counter.h"
-#include "bsp_sensor.h"
 #include "bsp_w25q128.h"
 #include "bsp_w5500.h"
 
@@ -46,16 +43,16 @@ extern "C" {
 #include "can_service.h"
 #include "datahub.h"
 #include "digital_io_service.h"
-#include "imu_service.h"
 #include "led_blink.h"
 #include "rs485_uart.h"
 #include "modbus_rtu.h"
+#include "modbus_tcp.h"
+#include "modbus_master.h"
 #include "modbus_register_map.h"
 #include "io_config_storage.h"
 #include "io_logic_engine.h"
 #include "io_logic_protocol.h"
 
-#include "attitude_est.h"
 
 #ifdef __cplusplus
 }

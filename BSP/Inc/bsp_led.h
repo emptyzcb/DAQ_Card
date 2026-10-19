@@ -1,11 +1,11 @@
 #ifndef BSP_LED_H
 #define BSP_LED_H
 
-#include "stm32h7xx_hal.h"
+#include "main.h"
 
 #ifndef BSP_LED_GPIO_Port
-#define BSP_LED_GPIO_Port  GPIOB
-#define BSP_LED_Pin        GPIO_PIN_0
+#define BSP_LED_GPIO_Port  PA0_LED_GPIO_Port
+#define BSP_LED_Pin        PA0_LED_Pin
 #endif
 
 void BSP_LED_Init(void);
