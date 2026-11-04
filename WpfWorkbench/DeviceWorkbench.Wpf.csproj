@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>DeviceWorkbench.Wpf</AssemblyName>
+    <RootNamespace>DeviceWorkbench.Wpf</RootNamespace>
+    <ApplicationIcon>..\Assets\daq-workbench.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\IndustrialFieldDataAcquisitionTerminal.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,23 @@
+# .NET build output and local publication directories
+**/bin/
+**/obj/
+build-deploy/
+publish-import-project/
+runtimes/
+
+# Generated and local files
+*.exe
+*.pdb
+*.deps.json
+*.runtimeconfig.json
+*.bak
+*.old
+*.old2
+*.log
+*.user
+*.suo
+Projects/project_locations.json
+
+# Only the vendor PCAN runtime libraries in Assets are required by the project.
+*.dll
+!Assets/Pcan/**/PCANBasic.dll

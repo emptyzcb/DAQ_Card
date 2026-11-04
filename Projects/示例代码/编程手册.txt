@@ -1,0 +1,87 @@
+联合控制器编程手册（IOCF v2）
+============================
+
+1. 工程与运行方式
+
+在 io_logic_user.c 中编写控制逻辑。Library 目录中的头文件是可用接口及参数说明。
+上位机将源码解析为 IOCF v2 字节码，再通过以太网下载到板卡；这里不是通用 C 编译环境。
+必须定义 void IO_Logic_Main(void)。可按需定义 IO_Mode_0_Callback(void) 至
+IO_Mode_15_Callback(void)；未定义的模式为空入口，并非 C 语言的 __weak 函数。
+IO_SetMode(0) 选择模式 0，IO_RunCurrentMode() 执行当前模式回调。
+外部 DI3~DI6 编码不会自动切换模式；需要在主程序中读取并调用
+IO_SetMode(IO_GetExternalMode())。主程序不写 while(1) 时只执行一次。
+
+2. 支持的语法
+
+支持函数调用、if/else、while、return 和大括号代码块。条件可使用 !、&&、||
+及括号；布尔运算优先级为 ! 高于 && 高于 ||，按短路规则求值。
+例如：if (IO_DI_Level(INPUT_1) == 1 || !IO_DI_Level(INPUT_2)) { ... }
+对比较结果取反必须加括号：!(IO_AI_Mv(3) > 2500)。
+比较右值使用数字或库中定义的常量；支持的比较运算符以具体函数说明为准。
+不能使用任意 C 变量、指针、用户自定义函数、main 或 HAL_* 调用。
+
+3. 板载输入
+
+数字输入 IN1~IN8：INPUT_1~INPUT_8。
+  IO_DI_Level(ch) == 1/0 读取逻辑有效状态；也可直接写 IO_DI_Level(ch)。
+  IO_DI_Rising(ch)、IO_DI_Falling(ch) 检测本扫描周期的边沿。
+DI1/DI2 频率：IO_Freq_Hz(ch) >/< 阈值，范围 0~2000 Hz；
+  IO_Freq_Class(ch) == IO_FREQ_CLASS_* 读取档位。
+  IO_SetFreqTh(ch, 下限Hz, 上限Hz, 迟滞百分比, 无脉冲超时ms)
+  可设置阈值；下限须小于上限，迟滞 0~50%，超时 1~65535 ms。
+AD7606 CH1~CH8：IO_AI_Valid(ch) 判断数据是否有效；
+  IO_AI_Mv(ch) 以有符号毫伏比较，比较值 -10000~10000 mV。
+两路电流输入：IO_Current_Valid(1~2)、IO_Current_uA(1~2)；
+  对应 AD7606 CH1/CH2，比较值单位 uA。
+RS485 传感器：先在上位机配置并下载轮询项，再使用
+  IO_RS485_Valid(item) 与 IO_RS485_Value(item, offset)。
+  item 为 1~32，offset 为 0~15 且必须小于该项配置的寄存器数量；
+  Value 返回单个原始无符号 16 位寄存器值，不自动解释浮点数或工程单位。
+
+4. 板载输出与时间
+
+继电器 R1~R4：RELAY_1~RELAY_4；晶体管 T1~T4：TRANSISTOR_1~TRANSISTOR_4。
+  IO_DO_Set(通道, 1/0) 开/关；IO_DO_Pulse(通道, 毫秒) 输出定时脉冲。
+电压输出：IO_AO_SetVoltage(毫伏)，范围 0~10000 mV。
+电流输出：IO_AO_SetCurrent(微安)，范围 0~20000 uA。
+电流呼吸：IO_AO_BreathCurrent(下限uA, 上限uA, 周期ms)，周期 20~65535 ms。
+电压呼吸：IO_AO_Breath(下限mV, 上限mV, 周期ms)，周期 20~65535 ms。
+延时：IO_Delay(毫秒)，范围 1~65535 ms；延时会暂停当前程序的后续执行。
+长延时会降低当前模式对输入变化的响应速度。
+
+5. 一个安全的输入控制示例
+
+void IO_Mode_0_Callback(void)
+{
+    if (IO_AI_Valid(3) == 1 && IO_AI_Mv(3) > 2500 &&
+        (IO_DI_Level(INPUT_1) == 1 ||
+         (IO_RS485_Valid(1) == 1 && IO_RS485_Value(1, 0) > 500)))
+    {
+        IO_DO_Set(RELAY_1, 1);
+    }
+    else
+    {
+        IO_DO_Set(RELAY_1, 0);
+    }
+}
+
+void IO_Logic_Main(void)
+{
+    IO_SetMode(0);
+    while (1)
+    {
+        IO_RunCurrentMode();
+        IO_Delay(10);
+    }
+}
+
+6. 有效性与下载
+
+AD7606 数据需最近 500 ms 内采样成功。RS485 项需已配置、启用、最近轮询成功且
+未超时。数据无效时，任何数值比较（包括 !=）都为假；对该比较取反会变为真。
+控制模拟量或 RS485 数据前先检查对应的 Valid，并用 else 指定安全输出。
+使用模拟量/RS485 输入规则需要板卡固件 V1.2.6 或更高版本。
+编译通过仅表示上位机生成了字节码；点击“编译并下载”后，还须在编译结果中
+看到“下载成功：板卡已确认”才表示板卡接收成功。
+
+注意：具体函数声明、参数范围和可用比较方式，以本工程 Library 下的头文件为准。
