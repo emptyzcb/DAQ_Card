@@ -410,7 +410,8 @@ int MODBUS_REGISTER_IsValueValid(uint16_t address, uint16_t value)
       return ((value >= MODBUS_MASTER_MIN_INTERVAL_MS) &&
               (value <= MODBUS_MASTER_MAX_INTERVAL_MS)) ? 1 : 0;
     case 5U:
-      return (value == 0U) ? 1 : 0;
+      return ((value <= 0x7FU) && ((value & 0x0FU) <= 7U) &&
+              (((value >> 4) & 0x03U) <= 2U)) ? 1 : 0;
     default:
       return 1;
   }

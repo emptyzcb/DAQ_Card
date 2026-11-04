@@ -25,6 +25,8 @@ static uint8_t rs485_rx_work_buffer[RS485_UART_FRAME_MAX_SIZE];
 static volatile uint32_t rs485_stat_rx_frames;
 static volatile uint32_t rs485_stat_bad_frames;
 static volatile uint32_t rs485_stat_tx_frames;
+static uint8_t rs485_active_settings = 0U;
+static uint8_t rs485_settings_valid = 0U;
 
 #if RS485_COMM_LED_DIAGNOSTIC
 typedef enum
@@ -63,6 +65,8 @@ void RS485_UART_Init(void)
   rs485_stat_bad_frames = 0U;
   rs485_stat_tx_frames = 0U;
   rs485_set_direction(RS485_DIR_RX);
+  rs485_active_settings = 0U;
+  rs485_settings_valid = 1U;
 
   if (HAL_UARTEx_ReceiveToIdle_IT(&huart1,
                                   rs485_rx_work_buffer,
@@ -70,6 +74,32 @@ void RS485_UART_Init(void)
   {
     Error_Handler();
   }
+}
+
+int RS485_UART_Configure(uint8_t settings)
+{
+  static const uint32_t baud_rates[] = { 115200U, 1200U, 2400U, 4800U,
+                                         9600U, 19200U, 38400U, 57600U };
+  uint8_t baud_index = settings & 0x0FU;
+  uint8_t parity = (settings >> 4) & 0x03U;
+  if (((settings & 0x80U) != 0U) || (baud_index >= 8U) || (parity > 2U)) return 0;
+  if ((rs485_settings_valid != 0U) && (rs485_active_settings == settings)) return 1;
+
+  rs485_settings_valid = 0U;
+  rs485_set_direction(RS485_DIR_RX);
+  if (HAL_UART_AbortReceive(&huart1) != HAL_OK) return 0;
+  huart1.Init.BaudRate = baud_rates[baud_index];
+  huart1.Init.Parity = (parity == 1U) ? UART_PARITY_EVEN :
+                       (parity == 2U) ? UART_PARITY_ODD : UART_PARITY_NONE;
+  huart1.Init.WordLength = (parity == 0U) ? UART_WORDLENGTH_8B : UART_WORDLENGTH_9B;
+  huart1.Init.StopBits = ((settings & 0x40U) != 0U) ? UART_STOPBITS_2 : UART_STOPBITS_1;
+  if (HAL_UART_Init(&huart1) != HAL_OK) return 0;
+  rs485_rx_queue.head = rs485_rx_queue.tail;
+  if (HAL_UARTEx_ReceiveToIdle_IT(&huart1, rs485_rx_work_buffer,
+                                  RS485_UART_FRAME_MAX_SIZE) != HAL_OK) return 0;
+  rs485_active_settings = settings;
+  rs485_settings_valid = 1U;
+  return 1;
 }
 
 int RS485_UART_TryReceiveFrame(uint8_t *dst, uint16_t capacity, uint16_t *length)

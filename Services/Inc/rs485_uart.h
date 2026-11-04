@@ -25,6 +25,10 @@ typedef struct
 } RS485_UART_Stats;
 
 void RS485_UART_Init(void);
+/* Bits 0-3: baud index (0=115200, 1..7=1200..57600);
+ * bits 4-5: parity (0=none, 1=even, 2=odd); bit 6: two stop bits.
+ * 8 data bits, with 9-bit UART word length when parity is enabled. */
+int RS485_UART_Configure(uint8_t settings);
 int RS485_UART_TryReceiveFrame(uint8_t *dst, uint16_t capacity, uint16_t *length);
 int RS485_UART_Send(const uint8_t *data, uint16_t length, uint32_t timeout_ms);
 uint32_t RS485_UART_RxDropped(void);

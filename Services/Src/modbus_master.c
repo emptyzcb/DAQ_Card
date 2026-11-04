@@ -10,7 +10,8 @@
 #include "modbus_rtu.h"
 #include "rs485_uart.h"
 
-#define MODBUS_MASTER_RESPONSE_TIMEOUT_MS 200U
+/* A full 16-register RTU response takes over 300 ms at 1200 baud. */
+#define MODBUS_MASTER_RESPONSE_TIMEOUT_MS 600U
 #define MODBUS_MASTER_REQ_SIZE              8U
 #define MODBUS_MASTER_RESP_MAX             64U
 
@@ -57,6 +58,8 @@ static uint8_t master_entry_valid(const ModbusMasterPollEntry *entry)
   {
     return 0U;
   }
+  if (((entry->reserved & 0x80U) != 0U) || ((entry->reserved & 0x0FU) > 7U) ||
+      (((entry->reserved >> 4) & 0x03U) > 2U)) return 0U;
   return 1U;
 }
 
@@ -343,6 +346,9 @@ static uint8_t master_poll_one(const ModbusMasterPollEntry *entry,
   request[6] = (uint8_t)calculated_crc;
   request[7] = (uint8_t)(calculated_crc >> 8);
 
+  /* Minimum inter-frame quiet time, including at 1200 baud (3.5 chars). */
+  vTaskDelay(pdMS_TO_TICKS(35U));
+  if (RS485_UART_Configure(entry->reserved) == 0) return 0U;
   master_flush_rx();
   if (RS485_UART_Send(request, sizeof(request), 100U) == 0)
   {
