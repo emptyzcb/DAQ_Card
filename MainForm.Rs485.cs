@@ -43,7 +43,7 @@ internal sealed partial class MainForm
         toolbar.Controls.Add(new Label
         {
             AutoSize = true,
-            Text = "最多 32 项 · FC03/FC04 · 每项 1~16 个寄存器",
+            Text = "最多 32 项 · 每项配置串口参数 · 下载后生效，断电需重新下载",
             ForeColor = UiPalette.Muted,
             Margin = new Padding(14, 6, 0, 0)
         });
@@ -128,6 +128,15 @@ internal sealed partial class MainForm
         {
             Name = "interval", HeaderText = "周期(ms)", Width = 82
         });
+        var baudColumn = new DataGridViewComboBoxColumn { Name = "baud", HeaderText = "波特率", Width = 90, FlatStyle = FlatStyle.Flat };
+        baudColumn.Items.AddRange("1200", "2400", "4800", "9600", "19200", "38400", "57600", "115200");
+        rs485Grid.Columns.Add(baudColumn);
+        var parityColumn = new DataGridViewComboBoxColumn { Name = "parity", HeaderText = "校验", Width = 76, FlatStyle = FlatStyle.Flat };
+        parityColumn.Items.AddRange("无", "偶", "奇");
+        rs485Grid.Columns.Add(parityColumn);
+        var stopColumn = new DataGridViewComboBoxColumn { Name = "stop", HeaderText = "停止位", Width = 76, FlatStyle = FlatStyle.Flat };
+        stopColumn.Items.AddRange("1", "2");
+        rs485Grid.Columns.Add(stopColumn);
         rs485Grid.Columns.Add(new DataGridViewTextBoxColumn
         {
             Name = "state", HeaderText = "采集状态", Width = 96, ReadOnly = true
@@ -160,6 +169,9 @@ internal sealed partial class MainForm
             $"0x{config.StartRegister:X4}",
             config.Quantity,
             config.IntervalMs,
+            config.BaudRate.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            config.Parity == "Even" ? "偶" : config.Parity == "Odd" ? "奇" : "无",
+            config.StopBits.ToString(System.Globalization.CultureInfo.InvariantCulture),
             "未下载",
             "--");
     }
@@ -210,7 +222,10 @@ internal sealed partial class MainForm
                 checked((byte)function),
                 ParseUShortCell(row, "start", index, "起始寄存器"),
                 ParseUShortCell(row, "quantity", index, "采集数量"),
-                ParseUShortCell(row, "interval", index, "轮询周期")));
+                ParseUShortCell(row, "interval", index, "轮询周期"),
+                int.Parse(Convert.ToString(row.Cells["baud"].Value) ?? "115200", System.Globalization.CultureInfo.InvariantCulture),
+                Convert.ToString(row.Cells["parity"].Value) switch { "偶" => "Even", "奇" => "Odd", _ => "None" },
+                int.Parse(Convert.ToString(row.Cells["stop"].Value) ?? "1", System.Globalization.CultureInfo.InvariantCulture)));
         }
 
         Rs485ConfigurationProtocol.Validate(entries);

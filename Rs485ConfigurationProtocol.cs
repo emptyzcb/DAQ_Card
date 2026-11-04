@@ -7,7 +7,10 @@ internal sealed record Rs485SensorConfig(
     byte Function,
     ushort StartRegister,
     ushort Quantity,
-    ushort IntervalMs);
+    ushort IntervalMs,
+    int BaudRate = 115200,
+    string Parity = "None",
+    int StopBits = 1);
 
 internal sealed record Rs485SensorTelemetry(
     int Index,
@@ -61,7 +64,9 @@ internal sealed class Rs485ConfigurationProtocol
             client.WriteSingleRegister((ushort)(baseAddress + 2), entry.StartRegister);
             client.WriteSingleRegister((ushort)(baseAddress + 3), entry.Quantity);
             client.WriteSingleRegister((ushort)(baseAddress + 4), entry.IntervalMs);
-            client.WriteSingleRegister((ushort)(baseAddress + 5), 0);
+            client.WriteSingleRegister((ushort)(baseAddress + 5), EncodeSerialSettings(entry));
+            if (client.ReadHoldingRegisters((ushort)(baseAddress + 5), 1)[0] != EncodeSerialSettings(entry))
+                throw new ModbusException("板卡未接受串口参数，请更新板卡固件后重试。");
         }
 
         client.WriteSingleRegister(StagedCountRegister, checked((ushort)entries.Count));
@@ -89,6 +94,7 @@ internal sealed class Rs485ConfigurationProtocol
         {
             var offset = index * StagingRegistersPerItem;
             var identity = raw[offset + 1];
+            var serial = DecodeSerialSettings(raw[offset + 5]);
             entries.Add(new Rs485SensorConfig(
                 $"传感器 {index + 1}",
                 raw[offset] != 0,
@@ -96,7 +102,7 @@ internal sealed class Rs485ConfigurationProtocol
                 (byte)(identity >> 8),
                 raw[offset + 2],
                 raw[offset + 3],
-                raw[offset + 4]));
+                raw[offset + 4], serial.BaudRate, serial.Parity, serial.StopBits));
         }
         return entries;
     }
@@ -150,6 +156,7 @@ internal sealed class Rs485ConfigurationProtocol
         {
             var entry = entries[index];
             var prefix = $"第 {index + 1} 项";
+            _ = EncodeSerialSettings(entry);
             if (entry.SlaveAddress is 0 or > 247)
             {
                 throw new ArgumentException($"{prefix}从站地址必须在 1~247。", nameof(entries));
@@ -167,6 +174,26 @@ internal sealed class Rs485ConfigurationProtocol
                 throw new ArgumentException($"{prefix}轮询周期必须在 {MinimumIntervalMs}~{MaximumIntervalMs} ms。", nameof(entries));
             }
         }
+    }
+
+    private static readonly int[] SupportedBaudRates = { 115200, 1200, 2400, 4800, 9600, 19200, 38400, 57600 };
+    public static ushort EncodeSerialSettings(Rs485SensorConfig entry)
+    {
+        var baudIndex = Array.IndexOf(SupportedBaudRates, entry.BaudRate);
+        var parity = entry.Parity switch { "None" => 0, "Even" => 1, "Odd" => 2, _ => -1 };
+        if (baudIndex < 0 || parity < 0 || entry.StopBits is not (1 or 2))
+            throw new ArgumentException("RS485 串口参数无效：请选择支持的波特率、校验位和停止位。");
+        return (ushort)(baudIndex | (parity << 4) | (entry.StopBits == 2 ? 0x40 : 0));
+    }
+
+    public static (int BaudRate, string Parity, int StopBits) DecodeSerialSettings(ushort value)
+    {
+        var baud = value & 0x0F;
+        var parity = (value >> 4) & 3;
+        if ((value & 0xFF80) != 0 || baud >= SupportedBaudRates.Length || parity > 2)
+            throw new ModbusException($"板卡返回了无效的串口配置：0x{value:X4}");
+        return (SupportedBaudRates[baud], parity == 1 ? "Even" : parity == 2 ? "Odd" : "None",
+                (value & 0x40) != 0 ? 2 : 1);
     }
 
     private ushort[] ReadRange(ushort startAddress, int count)
