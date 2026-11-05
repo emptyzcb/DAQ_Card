@@ -580,6 +580,10 @@ internal sealed partial class MainForm : Form
         actions.Controls.Add(deviceManagerButton);
         actions.Controls.Add(connectionSummaryButton);
         actions.Controls.Add(connectButton);
+        var boardNetworkButton = new Button();
+        StyleHeaderButton(boardNetworkButton, "板卡网络配置", 132);
+        boardNetworkButton.Click += OnBoardNetworkClicked;
+        actions.Controls.Add(boardNetworkButton);
         overview.Controls.Add(actions, 1, 0);
         header.Controls.Add(overview);
         headerHost = header;
